@@ -15,6 +15,11 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.heightIn
+import com.riverrunner.engine.Deviation
+import com.riverrunner.engine.MoveType
+import com.riverrunner.engine.SizeClass
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -37,8 +42,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -52,7 +55,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -100,6 +102,9 @@ fun TableScreen(vm: AppViewModel) {
         onSound = { vm.setSound(!vm.soundOn) },
         onStar = vm::toggleStarHand,
         onReview = vm::setReviewEach,
+        onHud = vm::setHud,
+        onDeviation = vm::setDeviation,
+        onReplayLast = vm::openLastReplay,
     )
     if (confirmExit) {
         AlertDialog(
@@ -131,6 +136,9 @@ fun TableContent(
     onSound: () -> Unit = {},
     onStar: () -> Unit = {},
     onReview: (Boolean) -> Unit = {},
+    onHud: (Boolean) -> Unit = {},
+    onDeviation: (Boolean) -> Unit = {},
+    onReplayLast: () -> Unit = {},
 ) {
     val st = LocalStrings.current
     val haptic = LocalHapticFeedback.current
@@ -157,7 +165,10 @@ fun TableContent(
                 )
             }
         }
-        SidePanel(ui, fmt, onMove, onNext, onFastForward, onPractice, onExit, onHelp, onSound, onStar, onReview)
+        SidePanel(
+            ui, fmt, onMove, onNext, onFastForward, onPractice, onExit, onHelp, onSound, onStar, onReview,
+            onHud, onDeviation, onReplayLast,
+        )
     }
 }
 
@@ -174,6 +185,9 @@ private fun SidePanel(
     onSound: () -> Unit,
     onStar: () -> Unit,
     onReview: (Boolean) -> Unit,
+    onHud: (Boolean) -> Unit,
+    onDeviation: (Boolean) -> Unit,
+    onReplayLast: () -> Unit,
 ) {
     val st = LocalStrings.current
     val heroTurn = ui.legal != null
@@ -196,42 +210,50 @@ private fun SidePanel(
                 Spacer(Modifier.width(4.dp))
                 RoundIcon("✕", st.exit, onExit)
             }
-            Text(ui.blindsText, color = Palette.TextDim, fontSize = 11.sp, maxLines = 1)
-            if (ui.levelText != null) Text(ui.levelText, color = Palette.Gold, fontSize = 11.sp, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(ui.blindsText, color = Palette.TextDim, fontSize = 11.sp, maxLines = 1)
+                    if (ui.levelText != null) Text(ui.levelText, color = Palette.Gold, fontSize = 11.sp, maxLines = 1)
+                }
+                // the previous hand of this session, e.g. after skipping its review by mistake
+                if (ui.canReplayLast) {
+                    Box(
+                        Modifier.heightIn(min = 30.dp).pressable(onClick = onReplayLast).clip(RoundedCornerShape(50))
+                            .background(Palette.PanelHi).padding(horizontal = 8.dp)
+                            .semantics { role = Role.Button },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("⟲ " + st.replayLast, color = Palette.Text, fontSize = 11.sp, maxLines = 1)
+                    }
+                }
+            }
         }
-        // practice switch
-        Row(
-            Modifier.fillMaxWidth().height(26.dp).clip(RoundedCornerShape(8.dp)).background(Palette.PanelHi).padding(start = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(st.practice, color = Palette.Text, fontSize = 12.sp, modifier = Modifier.weight(1f))
-            Switch(
-                checked = ui.practice, onCheckedChange = onPractice, modifier = Modifier.scale(0.62f),
-                colors = SwitchDefaults.colors(checkedTrackColor = Palette.AccentDim, checkedThumbColor = Palette.Accent, uncheckedTrackColor = Palette.PanelHi2),
-            )
+        // switches: practice info, review each hand, HUD, live GTO feedback
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                ToggleChip(st.chipPractice, ui.practice, onPractice, Modifier.weight(1f))
+                ToggleChip(st.chipReview, ui.reviewEach, onReview, Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                ToggleChip(st.chipHud, ui.showHud, onHud, Modifier.weight(1f))
+                ToggleChip(st.chipDeviation, ui.showDeviation, onDeviation, Modifier.weight(1f))
+            }
         }
-        // review switch: open each hand's replay when it ends
-        Row(
-            Modifier.fillMaxWidth().height(26.dp).clip(RoundedCornerShape(8.dp)).background(Palette.PanelHi).padding(start = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(st.reviewEach, color = Palette.Text, fontSize = 12.sp, modifier = Modifier.weight(1f))
-            Switch(
-                checked = ui.reviewEach, onCheckedChange = onReview, modifier = Modifier.scale(0.62f),
-                colors = SwitchDefaults.colors(checkedTrackColor = Palette.AccentDim, checkedThumbColor = Palette.Accent, uncheckedTrackColor = Palette.PanelHi2),
-            )
-        }
-        // middle: results, or practice info + action log
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            val over = ui.handOver
-            if (over != null) {
-                HandOverPanel(over, fmt)
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    val info = ui.practiceInfo
-                    if (ui.practice && info != null) PracticeHud(info, fmt)
-                    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                        if (maxHeight > 36.dp) ActionLog(ui.log, Modifier.fillMaxSize())
+        // middle: feedback on your last decision, then results, or practice info + action log
+        Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            val fb = ui.feedback
+            if (ui.showDeviation && fb != null) FeedbackCard(fb, fmt)
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                val over = ui.handOver
+                if (over != null) {
+                    HandOverPanel(over, fmt)
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        val info = ui.practiceInfo
+                        if (ui.practice && info != null) PracticeHud(info, fmt)
+                        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                            if (maxHeight > 36.dp) ActionLog(ui.log, Modifier.fillMaxSize())
+                        }
                     }
                 }
             }
@@ -265,6 +287,62 @@ private fun pulse(): Float {
     val tr = rememberInfiniteTransition(label = "panelPulse")
     val v by tr.animateFloat(0f, 1f, infiniteRepeatable(tween(700, easing = LinearEasing), RepeatMode.Reverse), label = "p")
     return v
+}
+
+/** Compact on/off switch for the side panel; announced as a switch with its state. */
+@Composable
+private fun ToggleChip(label: String, on: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(8.dp)
+    Box(
+        modifier.height(30.dp).clip(shape)
+            .background(if (on) Palette.AccentDim else Palette.PanelHi)
+            .border(1.dp, if (on) Palette.Accent.copy(alpha = 0.8f) else Color.Transparent, shape)
+            .toggleable(value = on, onValueChange = onChange, role = Role.Switch),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            (if (on) "● " else "○ ") + label, color = if (on) Palette.Text else Palette.TextDim,
+            fontSize = 12.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, maxLines = 1,
+        )
+    }
+}
+
+/** GTO feedback on your last decision: verdict, then the GTO action mix and bet sizes. */
+@Composable
+private fun FeedbackCard(f: DecisionFeedback, fmt: (Int) -> String) {
+    val st = LocalStrings.current
+    val ok = f.verdict == Deviation.Verdict.OK
+    val tone = if (ok) Palette.Green else Palette.Red
+    val shape = RoundedCornerShape(8.dp)
+    Column(
+        Modifier.fillMaxWidth().clip(shape).background(Palette.PanelHi)
+            .border(1.dp, tone.copy(alpha = 0.55f), shape)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp),
+    ) {
+        val mine = TableMapper.actionLabel(st, f.action, fmt)
+        val head = when (f.verdict) {
+            Deviation.Verdict.OK -> "✓ ${st.inLine} · $mine"
+            Deviation.Verdict.ACTION -> "⚠ ${st.deviation} · $mine"
+            Deviation.Verdict.SIZE -> "⚠ ${st.sizeOff} · $mine"
+        }
+        Text(head, color = tone, fontSize = 12.sp, lineHeight = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+        val mix = Deviation.actionMix(f.policy)
+        val parts = listOf(MoveType.FOLD, MoveType.CHECK, MoveType.CALL, MoveType.RAISE).mapNotNull { t ->
+            mix[t]?.let { p ->
+                val name = when (t) { MoveType.FOLD -> st.fold; MoveType.CHECK -> st.check; MoveType.CALL -> st.call; MoveType.RAISE -> st.raise }
+                "$name ${Format.pct(p)}"
+            }
+        }
+        Text("GTO " + parts.joinToString(" · "), color = Palette.Accent, fontSize = 11.sp, lineHeight = 14.sp)
+        val sizes = Deviation.sizeMix(f.policy)
+        if (sizes.isNotEmpty()) {
+            Text(
+                SizeClass.entries.mapNotNull { c -> sizes[c]?.let { "${sizeName(st, c)} ${Format.pct(it)}" } }.joinToString(" · "),
+                color = Palette.TextDim, fontSize = 11.sp, lineHeight = 14.sp,
+            )
+        }
+    }
 }
 
 @Composable

@@ -49,26 +49,33 @@ import kotlin.random.Random
 
 @Composable
 fun ReplayScreen(vm: AppViewModel, initial: HandRecord) {
-    // during review mode the replay sits between hands: leaving it deals the next one
+    // review mode: the replay sits between hands, leaving it deals the next one.
+    // peeking: opened from the table mid-session, leaving it returns to the hand in play.
     val leave: () -> Unit = {
-        if (vm.reviewing) {
-            vm.continueFromReview()
-        } else {
-            vm.screen = Screen.History
+        when {
+            vm.reviewing -> vm.continueFromReview()
+            vm.peeking -> vm.backToTable()
+            else -> { vm.screen = Screen.History }
         }
     }
     BackHandler(onBack = leave)
     var record by remember { mutableStateOf(initial) }
+    val st = LocalStrings.current
     ReplayContent(
         record = record,
         fmt = { vm.fmt(it, record.bigBlind) },
         onBack = leave,
         onStar = { vm.toggleFavorite(record.id)?.let { record = it } },
-        onContinue = if (vm.reviewing) vm::continueFromReview else null,
+        onContinue = when {
+            vm.reviewing -> vm::continueFromReview
+            vm.peeking -> vm::backToTable
+            else -> null
+        },
+        continueLabel = if (vm.peeking && !vm.reviewing) st.backToTable else null,
     )
 }
 
-private fun sizeName(st: Strings, c: SizeClass): String = when (c) {
+internal fun sizeName(st: Strings, c: SizeClass): String = when (c) {
     SizeClass.SMALL -> st.sizeSmall
     SizeClass.MEDIUM -> st.sizeMedium
     SizeClass.LARGE -> st.sizeLarge
@@ -145,6 +152,8 @@ fun ReplayContent(
     onStar: () -> Unit,
     startIndex: Int = 0,
     onContinue: (() -> Unit)? = null,
+    /** label of the [onContinue] button; defaults to "Next hand" */
+    continueLabel: String? = null,
 ) {
     val st = LocalStrings.current
     val replayer = remember(record.id) { Replayer(record) }
@@ -222,7 +231,7 @@ fun ReplayContent(
             if (heroAction != null) AnalysisCard(heroAction, frame.action?.seat == record.heroSeat, policy, fmt)
             ActionLog(log, Modifier.weight(1f), highlightIndex = idx, onClick = { idx = it })
             if (onContinue != null) {
-                ActionButton(st.reviewNext, Palette.Gold, Modifier.fillMaxWidth(), textColor = Palette.Ink, onClick = onContinue)
+                ActionButton(continueLabel ?: st.reviewNext, Palette.Gold, Modifier.fillMaxWidth(), textColor = Palette.Ink, onClick = onContinue)
             }
         }
     }
@@ -263,14 +272,14 @@ private fun AnalysisCard(heroAction: Action, decided: Boolean, policy: Policy?, 
                 ActionType.FOLD -> MoveType.FOLD; ActionType.CHECK -> MoveType.CHECK
                 ActionType.CALL -> MoveType.CALL; else -> MoveType.RAISE
             }
-            val ok = (dist[t] ?: 0.0) >= 0.15
+            val ok = (dist[t] ?: 0.0) >= com.riverrunner.engine.Deviation.ACTION_MIN
             Text(
                 if (ok) "✓ ${st.inLine}" else "⚠ ${st.deviation}",
                 color = if (ok) Palette.Green else Palette.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold,
             )
             if (t == MoveType.RAISE) {
                 val mine = SizeClass.of(heroAction.streetTotal, policy.pot)
-                val sizeOk = (sizes[mine] ?: 0.0) >= 0.08
+                val sizeOk = (sizes[mine] ?: 0.0) >= com.riverrunner.engine.Deviation.SIZE_MIN
                 Text(
                     if (sizeOk) "✓ ${sizeName(st, mine)}" else "⚠ ${st.sizeOff}: ${sizeName(st, mine)}",
                     color = if (sizeOk) Palette.Green else Palette.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold,

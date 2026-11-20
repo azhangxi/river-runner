@@ -12,6 +12,13 @@ import com.riverrunner.audio.SoundPlayer
 import com.riverrunner.data.HistoryStore
 import com.riverrunner.data.ProfileStore
 import com.riverrunner.engine.AchievementDef
+import com.riverrunner.engine.BotStyle
+import com.riverrunner.engine.Deviation
+import com.riverrunner.engine.DeviationTally
+import com.riverrunner.engine.SeatStats
+import com.riverrunner.engine.SeatStatsCalc
+import com.riverrunner.engine.Stats
+import kotlinx.coroutines.async
 import com.riverrunner.engine.Achievements
 import com.riverrunner.engine.Facts
 import com.riverrunner.engine.Progress
@@ -173,6 +180,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var reviewEachHand by mutableStateOf(prefs.reviewEachHand); private set
     fun setReviewEach(v: Boolean) { prefs.reviewEachHand = v; reviewEachHand = v }
 
+    /** True while the previous hand's replay is open mid-session; leaving it returns to the table. */
+    var peeking by mutableStateOf(false); private set
+    var showHud by mutableStateOf(prefs.showHud); private set
+    fun setHud(v: Boolean) { prefs.showHud = v; showHud = v; session?.let { s -> table?.let { refreshSeats(s) } } }
+    var showDeviation by mutableStateOf(prefs.showDeviation); private set
+    fun setDeviation(v: Boolean) { prefs.showDeviation = v; showDeviation = v }
+
+    /** GTO feedback on the hero's last decision this hand. */
+    var feedback by mutableStateOf<DecisionFeedback?>(null); private set
+    /** Report of the session that just ended (for the result screen). */
+    var sessionReport by mutableStateOf<SessionReport?>(null); private set
+
     var screen by mutableStateOf<Screen>(Screen.Home)
     var strings by mutableStateOf(if (prefs.chinese) ZH else EN); private set
     var showInBB by mutableStateOf(prefs.showInBB); private set
@@ -221,6 +240,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             fastForward = fastForward, sessionOver = sessionOver,
             notice = notice, soundOn = soundOn,
             starred = starHand, reviewEach = reviewEachHand,
+            showHud = showHud, showDeviation = showDeviation, feedback = feedback,
+            canReplayLast = lastSessionRecord != null,
         )
 
     private var session: GameSession? = null
@@ -233,6 +254,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var starHand by mutableStateOf(false)
     /** History id of the hand that just ended, so a late star still reaches it. */
     private var lastRecordId: Long? = null
+    /** Hands of the current session (for the HUD and "replay last hand"). */
+    private val sessionRecords = ArrayList<HandRecord>()
+    private var lastSessionRecord by mutableStateOf<HandRecord?>(null)
+    private var hudStats: Map<Int, SeatStats> = emptyMap()
+    private var tally = DeviationTally()
+    /** (street, verdict) of the hero's decisions in the hand being played */
+    private val handVerdicts = ArrayList<Pair<Street, Deviation.Verdict>>()
     private var handKey = 0L
     private var actionSeq = 0
 
@@ -245,8 +273,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         session = s
         quitRequested = false
         reviewing = false
+        peeking = false
         starHand = false
         lastRecordId = null
+        sessionRecords.clear()
+        lastSessionRecord = null
+        hudStats = emptyMap()
+        tally = DeviationTally()
+        handVerdicts.clear()
+        feedback = null
+        sessionReport = null
         practice = prefs.practiceDefault
         sessionOver = false
         notice = null
@@ -273,6 +309,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         nextHandSignal?.complete(Unit)
     }
 
+    /** Opens the last finished hand of this session; the game waits at the table meanwhile. */
+    fun openLastReplay() {
+        val r = lastSessionRecord ?: return
+        record(mapOf(Progress.REPLAYS to 1L))
+        peeking = true
+        screen = Screen.Replay(r)
+    }
+
+    fun backToTable() {
+        peeking = false
+        screen = Screen.Table
+    }
+
     fun requestQuit() {
         quitRequested = true
         fastForward = true
@@ -288,7 +337,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun fmt(chips: Int, bb: Int): String = Format.amount(chips, bb, showInBB)
 
     private fun seatInfos(s: GameSession): List<SeatInfo> = s.players.map {
-        SeatInfo(it.seat, if (it.isHuman) strings.you else it.name, it.isHuman, it.stack, !it.alive && it.place > 0)
+        // nothing until the bot has played a hand this session
+        val hud = if (showHud && !it.isHuman) {
+            hudStats[it.seat]?.takeIf { st -> st.hands > 0 }?.let { st ->
+                strings.hudLine(Math.round(st.vpip * 100).toInt(), Math.round(st.pfr * 100).toInt(), st.hands)
+            }
+        } else null
+        SeatInfo(it.seat, if (it.isHuman) strings.you else it.name, it.isHuman, it.stack, !it.alive && it.place > 0, hud)
+    }
+
+    /** Re-maps the seats (e.g. after the HUD is switched) without changing the hand. */
+    private fun refreshSeats(s: GameSession) {
+        val e = s.current ?: return
+        publish(s, e, TableMapper.Stage.LIVE)
     }
 
     private fun publish(s: GameSession, e: HandEngine, stage: TableMapper.Stage, thinking: Long = 0) {
@@ -303,7 +364,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         log += LogLine(LogKind.ACTION, "$name (${e.positionName(a.seat)}) ${TableMapper.actionLabel(strings, a) { fmt(it, bb) }}", a.seat)
     }
 
-    private fun apply(e: HandEngine, s: GameSession, move: Move) {
+    private fun apply(e: HandEngine, s: GameSession, move: Move): Action {
         val a = e.apply(move)
         actionSeq++
         logAction(e, s, a)
@@ -313,6 +374,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             a.allIn -> sfx(Sound.ALLIN)
             else -> sfx(Sound.CHIP, 0.85f)
         }
+        return a
     }
 
     private fun updateBlinds(s: GameSession) {
@@ -335,6 +397,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             handOver = null
             starHand = false
             lastRecordId = null
+            feedback = null
+            handVerdicts.clear()
             heroInHand = true
             fastForward = false
             legal = null
@@ -392,13 +456,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                             legal = la
                             publish(s, e, TableMapper.Stage.LIVE)
                             sound.play(Sound.TURN, 0.55f, varyPitch = false)
+                            // GTO reference for this decision, worked out while you think. It has its own
+                            // random source so the session's deck is not disturbed; the hand does not change
+                            // until the policy is ready (it is awaited before the move is applied).
+                            val ctx = s.tournamentContext()
+                            val seed = handKey xor (actionSeq.toLong() shl 20)
+                            val policyJob = viewModelScope.async(Dispatchers.Default) {
+                                runCatching { Bot.decide(e, seat, BotStyle.GTO, kotlin.random.Random(seed), ctx) }.getOrNull()
+                            }
                             val d = CompletableDeferred<Move>()
                             heroMove = d
                             val move = d.await()
                             heroMove = null
                             legal = null
                             practiceInfo = null
-                            apply(e, s, move)
+                            val policy = policyJob.await()
+                            val a = apply(e, s, move)
+                            if (policy != null && !quitRequested) {
+                                val v = Deviation.judge(policy, a)
+                                handVerdicts += a.street to v
+                                feedback = DecisionFeedback(policy, a, v)
+                            }
                             if (e.player(seat).folded) heroInHand = false
                         } else {
                             val name = s.players[seat].name
@@ -431,6 +509,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val store = history
             withContext(Dispatchers.IO) { store.add(rec) }
             lastRecordId = rec.id
+            sessionRecords += rec
+            lastSessionRecord = rec
+            hudStats = s.players.filter { !it.isHuman }.associate { it.seat to SeatStatsCalc.forSeat(sessionRecords, it.seat) }
+            if (handVerdicts.isNotEmpty()) {
+                val pos = Stats.positionOf(rec)
+                for ((street, v) in handVerdicts) tally = tally.add(street, pos, v)
+                handVerdicts.clear()
+            }
             record(withContext(Dispatchers.Default) { runCatching { Facts.forHand(rec) }.getOrDefault(emptyMap()) })
             if (rec.favorite) record(mapOf(Progress.STARS to 1L))
             val bb = e.bigBlind
@@ -453,6 +539,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 nextHandSignal = sig
                 if (reviewEachHand) {
                     record(mapOf(Progress.REPLAYS to 1L))
+                    peeking = false
                     reviewing = true
                     screen = Screen.Replay(rec)
                 }
@@ -462,8 +549,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         val summary = s.finish(early = quitRequested && !(s.alivePlayers.size <= 1 || !s.hero.alive))
         record(Facts.forSession(summary, s.config))
+        sessionReport = SessionReport(
+            tally,
+            s.players.filter { !it.isHuman }.map { p ->
+                BotReveal(p.name, p.style, hudStats[p.seat] ?: SeatStatsCalc.forSeat(sessionRecords, p.seat))
+            },
+        )
         table = null
         handOver = null
+        peeking = false
+        reviewing = false
         screen = Screen.Result(summary)
     }
 

@@ -10,6 +10,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.riverrunner.engine.Action
 import com.riverrunner.engine.ActionType
 import com.riverrunner.engine.BotStyle
+import com.riverrunner.engine.Deviation
 import com.riverrunner.engine.Cards
 import com.riverrunner.engine.GameMode
 import com.riverrunner.engine.HandEngine
@@ -345,6 +346,73 @@ class ScreenshotTest {
     }
 
     /** CHANGELOG.md must be packed into the APK assets, and the "What's new" card must lay out. */
+    /** 8 players, your turn on the flop, HUD and live GTO feedback on, "last hand" available. */
+    @Test fun t29_table_hud_feedback() {
+        val s = Scenario(ZH, 8, 2, listOf("AsQs", "Kh5c", "9d9h", "Jc8c", "7h6h", "2c3d", "Td4s", "KcJd"), "Qd8s3hTs2s")
+        s.play(Move.FOLD, Move.FOLD, Move.raiseTo(250), Move.CALL, Move.FOLD, Move.FOLD, Move.CALL, Move.FOLD)
+        s.deal()
+        s.play(Move.CHECK, Move.raiseTo(400))
+        val huds = listOf(null, "18/12", "24/20", "45/8", "33/27", "61/40", "12/9", "22/18")
+        val seats = s.seats().map { si ->
+            si.copy(hud = huds[si.seat]?.split('/')?.let { (v, p) -> ZH.hudLine(v.toInt(), p.toInt(), 24 + si.seat) })
+        }
+        // your preflop call was a pot-sized raise in the GTO mix -> sizing deviation
+        val policy = com.riverrunner.engine.Policy(
+            listOf(Move.CALL to 0.55, Move.raiseTo(800) to 0.25, Move.FOLD to 0.20), null, 0.0, null, pot = 1000,
+        )
+        val myRaise = Action(Street.PREFLOP, 0, ActionType.RAISE, 1200, 1200, false)
+        val base = s.ui(practice = true)
+        val ui = base.copy(
+            table = TableMapper.build(ZH, s.e, seats, 1L, s.seq, TableMapper.Stage.LIVE, s.fmt, 0),
+            showHud = true, showDeviation = true, canReplayLast = true,
+            feedback = com.riverrunner.ui.DecisionFeedback(policy, myRaise, com.riverrunner.engine.Deviation.judge(policy, myRaise)),
+        )
+        table("29_table_hud_feedback", ui)
+    }
+
+    @Test fun t30_setup_custom_lineup() = shot("30_setup_custom_lineup") {
+        com.riverrunner.ui.SetupContent(
+            com.riverrunner.engine.SessionConfig(
+                GameMode.CASH, 6, 100, com.riverrunner.engine.TableType.MIXED,
+                styleMix = com.riverrunner.engine.StyleMix(
+                    mapOf(com.riverrunner.engine.BotStyle.STATION to 2, com.riverrunner.engine.BotStyle.LAG to 1), randomSpecial = 1,
+                ),
+            ),
+            {}, {},
+        )
+    }
+
+    @Test fun t31_result_report() {
+        val vm = AppViewModel(ApplicationProvider.getApplicationContext<Application>())
+        val summary = com.riverrunner.engine.SessionSummary(
+            GameMode.CASH,
+            listOf(
+                com.riverrunner.engine.Standing(0, "You", 1, 14250, true),
+                com.riverrunner.engine.Standing(1, "Blaze", 2, 11800, false),
+                com.riverrunner.engine.Standing(2, "Cobra", 3, 9600, false),
+                com.riverrunner.engine.Standing(3, "Dune", 4, 7350, false),
+                com.riverrunner.engine.Standing(4, "Echo", 5, 7000, false),
+            ),
+            1, 42.5, 63, true,
+        )
+        var tally = com.riverrunner.engine.DeviationTally()
+        repeat(30) { i -> tally = tally.add(Street.PREFLOP, if (i % 2 == 0) "BTN" else "BB", if (i % 6 == 0) Deviation.Verdict.ACTION else Deviation.Verdict.OK) }
+        repeat(14) { i -> tally = tally.add(Street.FLOP, "CO", if (i % 3 == 0) Deviation.Verdict.SIZE else Deviation.Verdict.OK) }
+        repeat(8) { i -> tally = tally.add(Street.TURN, "SB", if (i % 2 == 0) Deviation.Verdict.ACTION else Deviation.Verdict.OK) }
+        repeat(5) { i -> tally = tally.add(Street.RIVER, "BTN", if (i == 0) Deviation.Verdict.ACTION else Deviation.Verdict.OK) }
+        fun st(v: Double, p: Double, af: Double?) = com.riverrunner.engine.SeatStats(63, v, p, af)
+        val report = com.riverrunner.ui.SessionReport(
+            tally,
+            listOf(
+                com.riverrunner.ui.BotReveal("Blaze", BotStyle.LAG, st(0.36, 0.29, 2.4)),
+                com.riverrunner.ui.BotReveal("Cobra", BotStyle.STATION, st(0.52, 0.06, 0.4)),
+                com.riverrunner.ui.BotReveal("Dune", BotStyle.GTO, st(0.24, 0.19, 1.8)),
+                com.riverrunner.ui.BotReveal("Echo", BotStyle.NIT, st(0.13, 0.08, 1.1)),
+            ),
+        )
+        shot("31_result_report") { com.riverrunner.ui.ResultScreen(vm, summary, report) }
+    }
+
     @Test fun t27_whats_new() {
         val vm = AppViewModel(ApplicationProvider.getApplicationContext<Application>())
         org.junit.Assert.assertTrue("changelog.md is not in the app assets", vm.changelog.isNotEmpty())

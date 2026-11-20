@@ -201,6 +201,100 @@ class SizeClassTest {
     }
 }
 
+class TrainingTest {
+    @Test fun styleMixFillsSeatsAndTrims() {
+        val mix = StyleMix(mapOf(BotStyle.STATION to 2, BotStyle.LAG to 1), randomSpecial = 1)
+        assertEquals(4, mix.total)
+        val styles = mix.assign(5, Random(3))
+        assertEquals(5, styles.size)
+        // the random-style seat may also draw a calling station
+        assertTrue(styles.count { it == BotStyle.STATION } >= 2)
+        assertEquals(4, styles.count { it != BotStyle.GTO })
+        assertEquals(1, styles.count { it == BotStyle.GTO })
+        // heads-up: only one bot seat, styles keep display order (TAG, LAG, STATION, ...)
+        assertEquals(StyleMix(mapOf(BotStyle.LAG to 1), 0), mix.fit(1))
+        assertEquals(1, TablePreset.AGGRO.mix!!.fit(1).total)
+    }
+
+    @Test fun styleMixRoundTrip() {
+        val mix = StyleMix(mapOf(BotStyle.NIT to 2, BotStyle.TAG to 1), randomSpecial = 2)
+        assertEquals("T1,N2,R2", mix.encode())
+        assertEquals(mix.fit(9), StyleMix.decode(mix.encode()).fit(9))
+        assertEquals(StyleMix(), StyleMix.decode(""))
+        assertEquals(StyleMix(), StyleMix.decode("G3,x,Q"))
+    }
+
+    @Test fun sessionUsesTheMix() {
+        val s = GameSession(SessionConfig(GameMode.CASH, 6, 100, TableType.MIXED, seed = 5, styleMix = StyleMix(mapOf(BotStyle.STATION to 3))))
+        val bots = s.players.filter { !it.isHuman }.map { it.style }
+        assertEquals(3, bots.count { it == BotStyle.STATION })
+        assertEquals(2, bots.count { it == BotStyle.GTO })
+        val gto = GameSession(SessionConfig(GameMode.CASH, 6, 100, TableType.GTO, seed = 5, styleMix = StyleMix(mapOf(BotStyle.STATION to 3))))
+        assertTrue(gto.players.all { it.style == BotStyle.GTO })
+    }
+
+    private fun playHeadsUp(vararg moves: Move): HandRecord {
+        val e = HandEngine(
+            HandSetup(50, 100, 0, 0, listOf(SeatSetup(0, "P0", 1000), SeatSetup(1, "P1", 1000))),
+            PresetCardSource(mapOf(0 to Cards.parseMany("AsKs"), 1 to Cards.parseMany("2c7d")), Cards.parseMany("QsJsTs3c4d")),
+        )
+        for (m in moves) {
+            while (e.phase == Phase.STREET_DONE) e.dealNextStreet()
+            e.apply(m)
+        }
+        while (e.phase == Phase.STREET_DONE) e.dealNextStreet()
+        assertEquals(Phase.HAND_DONE, e.phase)
+        return HandRecord.from(e, GameMode.CASH, 1, 0, 2, mapOf(0 to BotStyle.GTO, 1 to BotStyle.GTO))
+    }
+
+    @Test fun seatStatsCountVpipPfrAndAggression() {
+        // hand 1: P0 raises, P1 calls; flop P1 bets, P0 calls; then checked down
+        val h1 = playHeadsUp(
+            Move.raiseTo(300), Move.CALL,
+            Move.raiseTo(200), Move.CALL,
+            Move.CHECK, Move.CHECK,
+            Move.CHECK, Move.CHECK,
+        )
+        // hand 2: P0 folds the small blind
+        val h2 = playHeadsUp(Move.FOLD)
+        val p0 = SeatStatsCalc.forSeat(listOf(h1, h2), 0)
+        assertEquals(2, p0.hands)
+        assertEquals(0.5, p0.vpip, 1e-9)
+        assertEquals(0.5, p0.pfr, 1e-9)
+        assertEquals(0.0, p0.af!!, 1e-9)
+        val p1 = SeatStatsCalc.forSeat(listOf(h1, h2), 1)
+        assertEquals(0.5, p1.vpip, 1e-9)   // posting the big blind is not voluntary
+        assertEquals(0.0, p1.pfr, 1e-9)
+        assertEquals(1.0, p1.af!!, 1e-9)
+        assertEquals(null, SeatStatsCalc.forSeat(listOf(h2), 1).af)
+        assertEquals(0, SeatStatsCalc.forSeat(listOf(h1), 5).hands)
+    }
+
+    @Test fun deviationJudgesActionAndSize() {
+        // pot 100: check 50%, bet 50 (medium) 30%, bet 100 (pot) 20%
+        val p = Policy(listOf(Move.CHECK to 0.5, Move.raiseTo(50) to 0.3, Move.raiseTo(100) to 0.2), null, 0.0, null, pot = 100)
+        fun act(t: ActionType, total: Int = 0) = Action(Street.FLOP, 0, t, total, total, false)
+        assertEquals(Deviation.Verdict.OK, Deviation.judge(p, act(ActionType.CHECK)))
+        assertEquals(Deviation.Verdict.ACTION, Deviation.judge(p, act(ActionType.FOLD)))
+        assertEquals(Deviation.Verdict.OK, Deviation.judge(p, act(ActionType.BET, 50)))
+        assertEquals(Deviation.Verdict.OK, Deviation.judge(p, act(ActionType.BET, 100)))
+        assertEquals(Deviation.Verdict.SIZE, Deviation.judge(p, act(ActionType.BET, 33)))
+        assertEquals(Deviation.Verdict.SIZE, Deviation.judge(p, act(ActionType.BET, 200)))
+    }
+
+    @Test fun tallyCountsByStreetAndPosition() {
+        val t = DeviationTally()
+            .add(Street.PREFLOP, "BTN", Deviation.Verdict.OK)
+            .add(Street.FLOP, "BTN", Deviation.Verdict.SIZE)
+            .add(Street.FLOP, "BB", Deviation.Verdict.ACTION)
+        assertEquals(3, t.decisions)
+        assertEquals(2, t.deviations)
+        assertEquals(2.0 / 3, t.rate, 1e-9)
+        assertEquals(2 to 2, t.byStreet[Street.FLOP])
+        assertEquals(2 to 1, t.byPosition["BTN"])
+    }
+}
+
 class ChangelogTest {
     @Test fun parsesSectionsAndLanguages() {
         val text = """

@@ -56,6 +56,12 @@ import com.riverrunner.engine.Stats
 import com.riverrunner.engine.Progress
 import com.riverrunner.engine.Achievements
 import com.riverrunner.engine.TableType
+import com.riverrunner.engine.TablePreset
+import com.riverrunner.engine.StyleMix
+import com.riverrunner.engine.BotStyle
+import com.riverrunner.engine.DeviationTally
+import com.riverrunner.engine.Street
+import androidx.compose.foundation.layout.size
 import com.riverrunner.i18n.LocalStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -134,6 +140,7 @@ fun HomeScreen(vm: AppViewModel) {
 private fun lastConfig(p: Prefs) = SessionConfig(
     mode = p.lastMode, tableSize = p.lastSize, startingBB = p.lastStackBB, tableType = p.lastTableType,
     handsPerLevel = p.lastHandsPerLevel, cashAnteFraction = if (p.lastAnte) 0.125 else 0.0,
+    styleMix = p.lastStyleMix,
 )
 
 @Composable
@@ -157,11 +164,13 @@ fun SetupScreen(vm: AppViewModel) {
         onStart = { c ->
             p.lastMode = c.mode; p.lastSize = c.tableSize; p.lastStackBB = c.startingBB
             p.lastTableType = c.tableType; p.lastHandsPerLevel = c.handsPerLevel; p.lastAnte = c.cashAnteFraction > 0
+            if (c.tableType == TableType.MIXED) p.lastStyleMix = c.styleMix
             vm.startGame(c)
         },
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SetupContent(initial: SessionConfig, onBack: () -> Unit, onStart: (SessionConfig) -> Unit) {
     val st = LocalStrings.current
@@ -171,6 +180,15 @@ fun SetupContent(initial: SessionConfig, onBack: () -> Unit, onStart: (SessionCo
     var table by remember { mutableStateOf(initial.tableType) }
     var hpl by remember { mutableIntStateOf(initial.handsPerLevel) }
     var ante by remember { mutableStateOf(initial.cashAnteFraction > 0) }
+    // mixed-table line-up: a preset, or null for the custom counts in `custom`
+    val initMix = initial.styleMix
+    var preset by remember {
+        mutableStateOf<TablePreset?>(if (initMix == null) TablePreset.RANDOM else TablePreset.entries.firstOrNull { it.mix == initMix })
+    }
+    var custom by remember { mutableStateOf(initMix ?: StyleMix(randomSpecial = 2)) }
+    val bots = size - 1
+    /** The mix this setup would play with; null = random seats. Not trimmed: the session fits it to the seats. */
+    val chosenMix: StyleMix? = if (preset == null) custom else preset?.mix
     val cashStacks = listOf(50, 100, 150, 200)
     val tourneyStacks = listOf(20, 30, 50, 75, 100)
     val stackOptions = if (mode == GameMode.CASH) cashStacks else tourneyStacks
@@ -200,6 +218,36 @@ fun SetupContent(initial: SessionConfig, onBack: () -> Unit, onStart: (SessionCo
                     Pill(st.gtoTable, table == TableType.GTO, { table = TableType.GTO })
                     Pill(st.mixedTable, table == TableType.MIXED, { table = TableType.MIXED })
                 }
+                if (table == TableType.MIXED) {
+                    OptionRow(st.lineup) {
+                        for (p in TablePreset.entries) Pill(st.presetName(p), preset == p, { preset = p })
+                        Pill(st.presetName(null), preset == null, { preset = null })
+                    }
+                    if (preset == null) {
+                        val fitted = custom.fit(bots)
+                        val full = fitted.total >= bots
+                        Column(Modifier.padding(start = 92.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(st.specialCount(fitted.total, bots), color = Palette.TextDim, fontSize = 12.sp)
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                for (s in StyleMix.SPECIAL) {
+                                    StyleCounter(
+                                        st.styleName(s), fitted.count(s), canAdd = !full,
+                                        onMinus = { custom = fitted.copy(counts = fitted.counts + (s to (fitted.count(s) - 1).coerceAtLeast(0))) },
+                                        onPlus = { custom = fitted.copy(counts = fitted.counts + (s to fitted.count(s) + 1)) },
+                                    )
+                                }
+                                StyleCounter(
+                                    st.randomStyle, fitted.randomSpecial, canAdd = !full,
+                                    onMinus = { custom = fitted.copy(randomSpecial = (fitted.randomSpecial - 1).coerceAtLeast(0)) },
+                                    onPlus = { custom = fitted.copy(randomSpecial = fitted.randomSpecial + 1) },
+                                )
+                            }
+                        }
+                    }
+                }
                 if (mode == GameMode.TOURNAMENT) {
                     OptionRow(st.handsPerLevel) {
                         for (h in listOf(5, 8, 10, 15, 20)) Pill("$h", hpl == h, { hpl = h }, Modifier.width(52.dp))
@@ -222,16 +270,49 @@ fun SetupContent(initial: SessionConfig, onBack: () -> Unit, onStart: (SessionCo
             val lines = st.setupSummary(mode == GameMode.TOURNAMENT, size, stackBB, table == TableType.MIXED, hpl, ante)
             Text(lines[0], color = Palette.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp)
             for (l in lines.drop(1)) Text(l, color = Palette.Text.copy(alpha = 0.85f), fontSize = 13.sp, lineHeight = 19.sp)
+            if (table == TableType.MIXED) {
+                val lineupText = chosenMix?.fit(bots)?.let { f ->
+                    st.lineupDesc(StyleMix.SPECIAL.associateWith { f.count(it) }, f.randomSpecial, bots - f.total)
+                } ?: st.lineupRandomDesc
+                Text("${st.lineup}: $lineupText", color = Palette.Text.copy(alpha = 0.85f), fontSize = 13.sp, lineHeight = 19.sp)
+            }
             Spacer(Modifier.weight(1f))
             ActionButton(st.start, Palette.Gold, textColor = Palette.Ink, modifier = Modifier.fillMaxWidth().height(52.dp)) {
                 onStart(
                     SessionConfig(
                         mode = mode, tableSize = size, startingBB = stackBB, tableType = table,
                         handsPerLevel = hpl, cashAnteFraction = if (ante) 0.125 else 0.0,
+                        styleMix = if (table == TableType.MIXED) chosenMix else null,
                     )
                 )
             }
         }
+    }
+}
+
+/** "− TAG 1 +" counter for one style in a custom line-up. */
+@Composable
+private fun StyleCounter(label: String, count: Int, canAdd: Boolean, onMinus: () -> Unit, onPlus: () -> Unit) {
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).background(if (count > 0) Palette.AccentDim else Palette.PanelHi),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CounterButton("−", count > 0, onMinus)
+        Text(
+            "$label $count", color = Palette.Text, fontSize = 13.sp, maxLines = 1, softWrap = false,
+            fontWeight = if (count > 0) FontWeight.Bold else FontWeight.Normal,
+        )
+        CounterButton("+", canAdd, onPlus)
+    }
+}
+
+@Composable
+private fun CounterButton(text: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.size(38.dp).clip(androidx.compose.foundation.shape.CircleShape).pressable(enabled, onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, color = if (enabled) Palette.Text else Palette.TextDim.copy(alpha = 0.35f), fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -253,7 +334,11 @@ private fun OptionRow(label: String, content: @Composable () -> Unit) {
 // ============================================================================ Result
 
 @Composable
-fun ResultScreen(vm: AppViewModel, summary: com.riverrunner.engine.SessionSummary) {
+fun ResultScreen(
+    vm: AppViewModel,
+    summary: com.riverrunner.engine.SessionSummary,
+    report: SessionReport? = vm.sessionReport,
+) {
     val st = LocalStrings.current
     BackHandler { vm.screen = Screen.Home }
     Row(Modifier.fillMaxSize().background(Palette.Bg).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -294,7 +379,95 @@ fun ResultScreen(vm: AppViewModel, summary: com.riverrunner.engine.SessionSummar
                     Text(if (s.stack > 0) Format.amount(s.stack, 100, vm.showInBB && summary.mode == GameMode.CASH) else st.busted, color = Palette.TextDim, fontSize = 14.sp)
                 }
             }
+            if (report != null) {
+                item { ReportHeading(st.sessionReport) }
+                item { DeviationSummary(report.tally) }
+                // only worth revealing when somebody actually deviated from GTO
+                if (report.bots.any { it.style != BotStyle.GTO }) {
+                    item { ReportHeading(st.whoTheyWere) }
+                    items(report.bots) { b -> BotRevealRow(b) }
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun ReportHeading(text: String) {
+    Text(text, color = Palette.Text, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp, bottom = 2.dp))
+}
+
+/** Green for few deviations, gold for some, red for many. */
+private fun deviationColor(rate: Double): Color = when {
+    rate <= 0.2 -> Palette.Green
+    rate <= 0.4 -> Palette.Gold
+    else -> Palette.Red
+}
+
+@Composable
+private fun DeviationSummary(t: DeviationTally) {
+    val st = LocalStrings.current
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Palette.PanelHi).padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (t.decisions == 0) {
+            Text(st.noDecisions, color = Palette.TextDim, fontSize = 13.sp)
+            return@Column
+        }
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(Format.pct(t.rate), color = deviationColor(t.rate), fontSize = 28.sp, fontFamily = Numeric, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(10.dp))
+            Text(st.decisionsLine(t.decisions, t.deviations), color = Palette.Text, fontSize = 13.sp, modifier = Modifier.padding(bottom = 5.dp))
+        }
+        val streets = listOf(Street.PREFLOP to st.preflop, Street.FLOP to st.flop, Street.TURN to st.turn, Street.RIVER to st.river)
+        Text(st.byStreet, color = Palette.TextDim, fontSize = 12.sp)
+        DeviationBars(streets.mapNotNull { (s, name) -> t.byStreet[s]?.let { name to it } })
+        Text(st.byPosition, color = Palette.TextDim, fontSize = 12.sp)
+        DeviationBars(t.byPosition.entries.sortedByDescending { it.value.first }.map { it.key to it.value })
+    }
+}
+
+/** One bar per row: share of decisions that deviated, with "deviations/decisions". */
+@Composable
+private fun DeviationBars(rows: List<Pair<String, Pair<Int, Int>>>) {
+    for ((label, counts) in rows) {
+        val (decisions, off) = counts
+        val rate = if (decisions == 0) 0.0 else off.toDouble() / decisions
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, color = Palette.Text, fontSize = 12.sp, maxLines = 1, modifier = Modifier.width(64.dp))
+            Box(Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(4.dp)).background(Palette.PanelHi2)) {
+                Box(Modifier.fillMaxHeight().fillMaxWidth(rate.toFloat()).background(deviationColor(rate)))
+            }
+            Text(
+                "$off/$decisions", color = Palette.TextDim, fontSize = 12.sp, fontFamily = Numeric,
+                textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.width(48.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun BotRevealRow(b: BotReveal) {
+    val st = LocalStrings.current
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Palette.PanelHi).padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(b.name, color = Palette.Text, fontSize = 14.sp, maxLines = 1, modifier = Modifier.weight(1f))
+        val s = b.stats
+        Text(
+            if (s.hands == 0) "—"
+            else st.hudLine(Math.round(s.vpip * 100).toInt(), Math.round(s.pfr * 100).toInt(), s.hands) +
+                (s.af?.let { " · AF %.1f".format(it) } ?: ""),
+            color = Palette.TextDim, fontSize = 12.sp, fontFamily = Numeric, maxLines = 1,
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            st.styleName(b.style), color = if (b.style == BotStyle.GTO) Palette.TextDim else Palette.Gold,
+            fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+            textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.width(64.dp),
+        )
     }
 }
 

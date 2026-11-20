@@ -483,9 +483,19 @@ private fun SeatPod(s: SeatUi, g: TableGeometry, t: TableUi, fmt: (Int) -> Strin
                     .clip(RoundedCornerShape(4.dp)).background(Color(0xCC0B1210)).padding(horizontal = 4.dp),
             )
         }
-        // equity (replay) or winnings (bottom-right)
+        // equity (replay) or winnings (bottom-right); otherwise the HUD line when it is on
         Box(Modifier.align(Alignment.BottomEnd).offset(x = (-8).dp, y = 0.dp)) {
             WonOrEquity(s, fmt)
+            val hud = s.hud
+            if (hud != null && s.won == 0 && s.equity == null) {
+                Text(
+                    hud, color = Palette.Text, fontSize = 10.sp, lineHeight = 12.sp, fontFamily = Numeric,
+                    fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
+                    modifier = Modifier.offset(y = (-2).dp).clip(RoundedCornerShape(4.dp))
+                        .background(Color(0xE60B1210)).border(1.dp, Palette.Blue.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 4.dp),
+                )
+            }
         }
     }
 }

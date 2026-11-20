@@ -87,6 +87,27 @@ data class Strings(
     val gotIt: String,
     val allUpdates: String,
     val currentVersion: (String) -> String,
+    // line-up, HUD, live deviation, session report
+    val lineup: String,
+    val presetName: (com.riverrunner.engine.TablePreset?) -> String,
+    val randomStyle: String,
+    val lineupRandomDesc: String,
+    val lineupDesc: (Map<BotStyle, Int>, Int, Int) -> String,
+    val specialCount: (Int, Int) -> String,
+    val chipPractice: String,
+    val chipReview: String,
+    val chipHud: String,
+    val chipDeviation: String,
+    val replayLast: String,
+    val backToTable: String,
+    /** seat HUD: VPIP %, PFR %, hands */
+    val hudLine: (Int, Int, Int) -> String,
+    val sessionReport: String,
+    val decisionsLine: (Int, Int) -> String,
+    val byStreet: String,
+    val byPosition: String,
+    val whoTheyWere: String,
+    val noDecisions: String,
     val estEquity: String,
     val actionLog: String,
     val preflop: String,
@@ -198,6 +219,16 @@ data class Strings(
     val setupSummary: (Boolean, Int, Int, Boolean, Int, Boolean) -> List<String>,
 )
 
+private fun zhStyle(s: BotStyle) = when (s) {
+    BotStyle.GTO -> "GTO"; BotStyle.TAG -> "紧凶"; BotStyle.LAG -> "松凶"
+    BotStyle.STATION -> "跟注站"; BotStyle.NIT -> "紧弱"; BotStyle.MANIAC -> "疯子"
+}
+
+private fun enStyle(s: BotStyle) = when (s) {
+    BotStyle.GTO -> "GTO"; BotStyle.TAG -> "TAG"; BotStyle.LAG -> "LAG"
+    BotStyle.STATION -> "station"; BotStyle.NIT -> "nit"; BotStyle.MANIAC -> "maniac"
+}
+
 val ZH = Strings(
     isZh = true,
     appName = "River Runner",
@@ -281,6 +312,36 @@ val ZH = Strings(
     gotIt = "知道了",
     allUpdates = "全部更新记录",
     currentVersion = { "当前版本 $it" },
+    lineup = "牌桌阵容",
+    presetName = { when (it) {
+        com.riverrunner.engine.TablePreset.RANDOM -> "随机"
+        com.riverrunner.engine.TablePreset.FISH -> "鱼塘"
+        com.riverrunner.engine.TablePreset.AGGRO -> "凶桌"
+        com.riverrunner.engine.TablePreset.TIGHT -> "紧桌"
+        null -> "自定义"
+    } },
+    randomStyle = "随机风格",
+    lineupRandomDesc = "每个座位随机抽风格（含 GTO），特殊玩家人数不固定",
+    lineupDesc = { counts, random, gto ->
+        val parts = counts.filterValues { it > 0 }.map { (s, n) -> "$n 个${zhStyle(s)}" }.toMutableList()
+        if (random > 0) parts += "$random 个随机风格"
+        if (gto > 0) parts += "$gto 个 GTO"
+        parts.joinToString("、")
+    },
+    specialCount = { n, max -> "特殊玩家 $n / $max，其余为 GTO" },
+    chipPractice = "练习",
+    chipReview = "每手复盘",
+    chipHud = "数据",
+    chipDeviation = "偏离提示",
+    replayLast = "复盘上一手",
+    backToTable = "返回牌桌",
+    hudLine = { v, p, h -> "入$v 加$p · ${h}手" },
+    sessionReport = "本局报告",
+    decisionsLine = { d, o -> "$d 次决策，偏离 $o 次" },
+    byStreet = "按街",
+    byPosition = "按位置",
+    whoTheyWere = "对手的真实风格",
+    noDecisions = "本局没有记录到你的决策",
     estEquity = "对手范围下的估计胜率",
     actionLog = "行动记录",
     preflop = "翻牌前",
@@ -493,6 +554,36 @@ val EN = Strings(
     gotIt = "Got it",
     allUpdates = "All updates",
     currentVersion = { "Version $it" },
+    lineup = "Line-up",
+    presetName = { when (it) {
+        com.riverrunner.engine.TablePreset.RANDOM -> "Random"
+        com.riverrunner.engine.TablePreset.FISH -> "Fish pond"
+        com.riverrunner.engine.TablePreset.AGGRO -> "Aggressive"
+        com.riverrunner.engine.TablePreset.TIGHT -> "Tight"
+        null -> "Custom"
+    } },
+    randomStyle = "Random style",
+    lineupRandomDesc = "Every seat draws a random style (GTO included)",
+    lineupDesc = { counts, random, gto ->
+        val parts = counts.filterValues { it > 0 }.map { (s, n) -> "$n ${enStyle(s)}" }.toMutableList()
+        if (random > 0) parts += "$random random"
+        if (gto > 0) parts += "$gto GTO"
+        parts.joinToString(", ")
+    },
+    specialCount = { n, max -> "$n of $max bots deviate; the rest play GTO" },
+    chipPractice = "Practice",
+    chipReview = "Review",
+    chipHud = "HUD",
+    chipDeviation = "Feedback",
+    replayLast = "Last hand",
+    backToTable = "Back to table",
+    hudLine = { v, p, h -> "V$v P$p · ${h}h" },
+    sessionReport = "Session report",
+    decisionsLine = { d, o -> "$d decisions, $o off GTO" },
+    byStreet = "By street",
+    byPosition = "By position",
+    whoTheyWere = "Who they really were",
+    noDecisions = "No decisions of yours were recorded",
     estEquity = "Est. equity vs ranges",
     actionLog = "Actions",
     preflop = "Preflop",

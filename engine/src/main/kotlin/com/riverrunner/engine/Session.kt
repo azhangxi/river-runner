@@ -20,6 +20,8 @@ data class SessionConfig(
     /** cash: ante as a fraction of the big blind (0 = none) */
     val cashAnteFraction: Double = 0.0,
     val seed: Long = System.nanoTime(),
+    /** mixed table line-up; null = every bot seat draws a random style (GTO included) */
+    val styleMix: StyleMix? = null,
 )
 
 data class BlindLevel(val level: Int, val smallBlind: Int, val bigBlind: Int, val ante: Int)
@@ -77,12 +79,16 @@ class GameSession(val config: SessionConfig) {
         require(config.tableSize in 2..9)
         val names = BOT_NAMES.shuffled(random)
         val start = config.startingBB * BASE_BB
+        val bots = config.tableSize - 1
+        val mix = config.styleMix
+        val botStyles: List<BotStyle> = when {
+            config.tableType == TableType.GTO -> List(bots) { BotStyle.GTO }
+            mix == null -> List(bots) { MIXED_POOL[random.nextInt(MIXED_POOL.size)] }
+            else -> mix.assign(bots, random)
+        }
         players = List(config.tableSize) { i ->
             if (i == HERO_SEAT) SessionPlayer(i, "You", BotStyle.GTO, true, start)
-            else {
-                val style = if (config.tableType == TableType.GTO) BotStyle.GTO else MIXED_POOL[random.nextInt(MIXED_POOL.size)]
-                SessionPlayer(i, names[i - 1], style, false, start)
-            }
+            else SessionPlayer(i, names[i - 1], botStyles[i - 1], false, start)
         }
         buttonSeat = random.nextInt(config.tableSize)
     }

@@ -8,6 +8,19 @@ One section per version, newest first. Each line is `Chinese | English`.
 CI takes the version from the top section (`## 0.4` builds 0.4.x) and copies that section into
 the GitHub release notes; the in-app "What's new" reads this file too.
 
+## 0.5 · 2026-11-19
+
+### 新增 | Added
+- 牌桌阵容：混合桌可以选“随机、鱼塘、凶桌、紧桌”，或自定义每种风格各几个人，其余座位是 GTO | Table line-up: pick random, fish pond, aggressive or tight for a mixed table, or set how many bots play each style; the other seats play GTO
+- 数据 HUD：打开后每个机器人旁显示本局的入池率、加注率和手数，靠数据判断对手风格，不直接给标签 | HUD: shows each bot's VPIP, PFR and hand count this session, so you read their style from the numbers instead of a label
+- 偏离提示：打开后，你每做一个决定，侧栏会显示 GTO 的动作和尺寸分布，以及你是否偏离；提示在你行动之后才出现 | Live feedback: after each of your decisions the side panel shows the GTO action and size mix and whether you deviated; it only appears after you act
+- 复盘上一手：打牌时随时回看上一手，看完回到当前这手；误点跳过每手复盘也能补看 | Replay the last hand at any time during a session and return to the hand in play, also after skipping a review by mistake
+- 本局报告：结束后显示你的偏离率，按街和按位置分开统计，并揭晓每个机器人的真实风格 | Session report: your deviation rate overall, by street and by position, plus each bot's true style
+
+### 改进 | Changed
+- 牌桌侧栏的开关改为四个紧凑按钮：练习、每手复盘、数据、偏离提示 | The side panel switches are now four compact toggles: practice, review, HUD and feedback
+- 复盘和牌桌使用同一套偏离判定标准 | Replay and the table use the same rules to judge a deviation
+
 ## 0.4 · 2026-11-11
 
 ### 新增 | Added

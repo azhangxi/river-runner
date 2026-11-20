@@ -6,6 +6,7 @@ import com.riverrunner.engine.Facts
 import com.riverrunner.engine.GameMode
 import com.riverrunner.engine.HandRecord
 import com.riverrunner.engine.Progress
+import com.riverrunner.engine.StyleMix
 import com.riverrunner.engine.TableType
 import org.json.JSONArray
 import org.json.JSONObject
@@ -70,6 +71,20 @@ class Prefs(context: Context) {
     var lastAnte: Boolean
         get() = sp.getBoolean("ante", false)
         set(v) = sp.edit().putBoolean("ante", v).apply()
+    /** Mixed-table line-up: "" = random seats, otherwise "M:" + [StyleMix.encode]. */
+    var lastStyleMix: StyleMix?
+        get() = sp.getString("mix", "")?.takeIf { it.startsWith("M:") }?.let { StyleMix.decode(it.removePrefix("M:")) }
+        set(v) = sp.edit().putString("mix", if (v == null) "" else "M:" + v.encode()).apply()
+
+    /** Table HUD: each bot's VPIP / PFR / AF for this session. */
+    var showHud: Boolean
+        get() = sp.getBoolean("hud", false)
+        set(v) = sp.edit().putBoolean("hud", v).apply()
+
+    /** After each of your decisions, show the GTO mix and whether you deviated. */
+    var showDeviation: Boolean
+        get() = sp.getBoolean("devfb", false)
+        set(v) = sp.edit().putBoolean("devfb", v).apply()
 
     /** Career totals written by version 0.2 and earlier (read once when migrating to save slots). */
     fun legacyCareer(): Map<String, Long> {

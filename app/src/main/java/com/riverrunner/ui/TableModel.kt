@@ -2,6 +2,11 @@ package com.riverrunner.ui
 
 import com.riverrunner.engine.Action
 import com.riverrunner.engine.ActionType
+import com.riverrunner.engine.BotStyle
+import com.riverrunner.engine.Deviation
+import com.riverrunner.engine.DeviationTally
+import com.riverrunner.engine.Policy
+import com.riverrunner.engine.SeatStats
 import com.riverrunner.engine.HandClasses
 import com.riverrunner.engine.HandEngine
 import com.riverrunner.engine.HandEvaluator
@@ -38,7 +43,18 @@ data class SeatUi(
     val equity: Double? = null,
     /** replay only: style label of the bot */
     val tag: String? = null,
+    /** live HUD line for a bot, e.g. "入32 加18 · 24手" (null = HUD off) */
+    val hud: String? = null,
 )
+
+/** GTO feedback on the hero's last decision. */
+data class DecisionFeedback(val policy: Policy, val action: Action, val verdict: Deviation.Verdict)
+
+/** One bot's true style next to what the HUD showed, for the end-of-session report. */
+data class BotReveal(val name: String, val style: BotStyle, val stats: SeatStats)
+
+/** End-of-session report: the hero's deviations and who the bots really were. */
+data class SessionReport(val tally: DeviationTally, val bots: List<BotReveal>)
 
 data class TableUi(
     val seats: List<SeatUi>,
@@ -95,11 +111,17 @@ data class TableScreenUi(
     val starred: Boolean = false,
     /** open each hand's replay after it ends */
     val reviewEach: Boolean = false,
+    val showHud: Boolean = false,
+    val showDeviation: Boolean = false,
+    /** GTO feedback on your last decision (shown when [showDeviation] is on) */
+    val feedback: DecisionFeedback? = null,
+    /** a finished hand of this session can be replayed */
+    val canReplayLast: Boolean = false,
     val soundOn: Boolean = true,
 )
 
 /** Static info about a seat that lives outside a single hand. */
-data class SeatInfo(val seat: Int, val name: String, val isHero: Boolean, val stack: Int, val busted: Boolean)
+data class SeatInfo(val seat: Int, val name: String, val isHero: Boolean, val stack: Int, val busted: Boolean, val hud: String? = null)
 
 object TableMapper {
 
@@ -187,6 +209,7 @@ object TableMapper {
                     actKind = a?.let { actKind(it) },
                     won = if (stage == Stage.FINAL) won - returned else 0,
                     handName = if (score != null && p.seat in showdown) HandEvaluator.categoryName(score, st.isZh) else null,
+                    hud = info.hud,
                 )
             }
         }
