@@ -479,12 +479,12 @@ private fun SeatPod(s: SeatUi, g: TableGeometry, t: TableUi, fmt: (Int) -> Strin
         if (posText.isNotEmpty()) {
             Text(
                 posText, color = Palette.TextDim, fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1,
-                modifier = Modifier.align(Alignment.BottomStart).offset(x = 12.dp, y = (-2).dp)
+                modifier = Modifier.align(Alignment.BottomStart).offset(x = if (s.hud != null) 6.dp else 12.dp, y = (-2).dp)
                     .clip(RoundedCornerShape(4.dp)).background(Color(0xCC0B1210)).padding(horizontal = 4.dp),
             )
         }
         // equity (replay) or winnings (bottom-right); otherwise the HUD line when it is on
-        Box(Modifier.align(Alignment.BottomEnd).offset(x = (-8).dp, y = 0.dp)) {
+        Box(Modifier.align(Alignment.BottomEnd).offset(x = if (s.hud != null && s.won == 0) (-2).dp else (-8).dp, y = 0.dp)) {
             WonOrEquity(s, fmt)
             val hud = s.hud
             if (hud != null && s.won == 0 && s.equity == null) {

@@ -102,6 +102,8 @@ data class Strings(
     val backToTable: String,
     /** seat HUD: VPIP %, PFR %, hands */
     val hudLine: (Int, Int, Int) -> String,
+    /** seat HUD on the table: VPIP %, PFR % (every bot has played the same hands) */
+    val hudShort: (Int, Int) -> String,
     val sessionReport: String,
     val decisionsLine: (Int, Int) -> String,
     val byStreet: String,
@@ -336,6 +338,7 @@ val ZH = Strings(
     replayLast = "复盘上一手",
     backToTable = "返回牌桌",
     hudLine = { v, p, h -> "入$v 加$p · ${h}手" },
+    hudShort = { v, p -> "入$v 加$p" },
     sessionReport = "本局报告",
     decisionsLine = { d, o -> "$d 次决策，偏离 $o 次" },
     byStreet = "按街",
@@ -578,6 +581,7 @@ val EN = Strings(
     replayLast = "Last hand",
     backToTable = "Back to table",
     hudLine = { v, p, h -> "V$v P$p · ${h}h" },
+    hudShort = { v, p -> "V$v P$p" },
     sessionReport = "Session report",
     decisionsLine = { d, o -> "$d decisions, $o off GTO" },
     byStreet = "By street",

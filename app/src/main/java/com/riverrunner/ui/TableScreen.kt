@@ -242,7 +242,9 @@ private fun SidePanel(
         // middle: feedback on your last decision, then results, or practice info + action log
         Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             val fb = ui.feedback
-            if (ui.showDeviation && fb != null) FeedbackCard(fb, fmt)
+            // feedback on your last decision; hidden while you make the next one (it would be stale and the
+            // controls need the room)
+            if (ui.showDeviation && fb != null && ui.legal == null) FeedbackCard(fb, fmt)
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 val over = ui.handOver
                 if (over != null) {
@@ -328,20 +330,18 @@ private fun FeedbackCard(f: DecisionFeedback, fmt: (Int) -> String) {
         }
         Text(head, color = tone, fontSize = 12.sp, lineHeight = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2)
         val mix = Deviation.actionMix(f.policy)
+        val sizes = Deviation.sizeMix(f.policy)
+        // one line: "GTO 弃牌 20% · 跟注 55% · 加注 25%（重注）"; sizes go in brackets after the raise
         val parts = listOf(MoveType.FOLD, MoveType.CHECK, MoveType.CALL, MoveType.RAISE).mapNotNull { t ->
             mix[t]?.let { p ->
                 val name = when (t) { MoveType.FOLD -> st.fold; MoveType.CHECK -> st.check; MoveType.CALL -> st.call; MoveType.RAISE -> st.raise }
-                "$name ${Format.pct(p)}"
+                val sizeNote = if (t == MoveType.RAISE && sizes.isNotEmpty()) {
+                    (if (st.isZh) "（" else " (") + SizeClass.entries.filter { it in sizes }.joinToString("/") { sizeName(st, it) } + (if (st.isZh) "）" else ")")
+                } else ""
+                "$name ${Format.pct(p)}$sizeNote"
             }
         }
-        Text("GTO " + parts.joinToString(" · "), color = Palette.Accent, fontSize = 11.sp, lineHeight = 14.sp)
-        val sizes = Deviation.sizeMix(f.policy)
-        if (sizes.isNotEmpty()) {
-            Text(
-                SizeClass.entries.mapNotNull { c -> sizes[c]?.let { "${sizeName(st, c)} ${Format.pct(it)}" } }.joinToString(" · "),
-                color = Palette.TextDim, fontSize = 11.sp, lineHeight = 14.sp,
-            )
-        }
+        Text("GTO " + parts.joinToString(" · "), color = Palette.Accent, fontSize = 11.sp, lineHeight = 14.sp, maxLines = 2)
     }
 }
 

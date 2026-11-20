@@ -340,7 +340,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // nothing until the bot has played a hand this session
         val hud = if (showHud && !it.isHuman) {
             hudStats[it.seat]?.takeIf { st -> st.hands > 0 }?.let { st ->
-                strings.hudLine(Math.round(st.vpip * 100).toInt(), Math.round(st.pfr * 100).toInt(), st.hands)
+                strings.hudShort(Math.round(st.vpip * 100).toInt(), Math.round(st.pfr * 100).toInt())
             }
         } else null
         SeatInfo(it.seat, if (it.isHuman) strings.you else it.name, it.isHuman, it.stack, !it.alive && it.place > 0, hud)

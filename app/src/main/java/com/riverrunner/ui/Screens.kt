@@ -267,7 +267,9 @@ fun SetupContent(initial: SessionConfig, onBack: () -> Unit, onStart: (SessionCo
                 .border(5.dp, Palette.Rail, RoundedCornerShape(16.dp)).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            val lines = st.setupSummary(mode == GameMode.TOURNAMENT, size, stackBB, table == TableType.MIXED, hpl, ante)
+            val allLines = st.setupSummary(mode == GameMode.TOURNAMENT, size, stackBB, table == TableType.MIXED, hpl, ante)
+            // for a mixed table the last line ("styles are random") is replaced by the line-up below
+            val lines = if (table == TableType.MIXED) allLines.dropLast(1) else allLines
             Text(lines[0], color = Palette.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp)
             for (l in lines.drop(1)) Text(l, color = Palette.Text.copy(alpha = 0.85f), fontSize = 13.sp, lineHeight = 19.sp)
             if (table == TableType.MIXED) {
@@ -367,6 +369,14 @@ fun ResultScreen(
             Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(14.dp)).background(Palette.Panel).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            // the report first: how often you deviated, then the standings with each bot's true style
+            if (report != null) {
+                item { ReportHeading(st.sessionReport) }
+                item { DeviationSummary(report.tally) }
+            }
+            // only worth revealing when somebody actually deviated from GTO
+            val reveal = report?.bots?.takeIf { bots -> bots.any { it.style != BotStyle.GTO } }?.associateBy { it.name }
+            if (reveal != null) item { ReportHeading(st.whoTheyWere) }
             items(summary.standings) { s ->
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
@@ -375,17 +385,14 @@ fun ResultScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("#${s.place}", color = Palette.Text, fontSize = 20.sp, fontFamily = Numeric, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(44.dp))
-                    Text(if (s.isHuman) st.you else s.name, color = Palette.Text, fontSize = 15.sp, modifier = Modifier.weight(1f))
-                    Text(if (s.stack > 0) Format.amount(s.stack, 100, vm.showInBB && summary.mode == GameMode.CASH) else st.busted, color = Palette.TextDim, fontSize = 14.sp)
-                }
-            }
-            if (report != null) {
-                item { ReportHeading(st.sessionReport) }
-                item { DeviationSummary(report.tally) }
-                // only worth revealing when somebody actually deviated from GTO
-                if (report.bots.any { it.style != BotStyle.GTO }) {
-                    item { ReportHeading(st.whoTheyWere) }
-                    items(report.bots) { b -> BotRevealRow(b) }
+                    Text(if (s.isHuman) st.you else s.name, color = Palette.Text, fontSize = 15.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                    val bot = if (s.isHuman) null else reveal?.get(s.name)
+                    if (bot != null) BotRevealCells(bot)
+                    Text(
+                        if (s.stack > 0) Format.amount(s.stack, 100, vm.showInBB && summary.mode == GameMode.CASH) else st.busted,
+                        color = Palette.TextDim, fontSize = 14.sp, maxLines = 1,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.width(72.dp),
+                    )
                 }
             }
         }
@@ -447,28 +454,22 @@ private fun DeviationBars(rows: List<Pair<String, Pair<Int, Int>>>) {
     }
 }
 
+/** A bot's session stats and true style, inside its standings row. */
 @Composable
-private fun BotRevealRow(b: BotReveal) {
+private fun BotRevealCells(b: BotReveal) {
     val st = LocalStrings.current
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Palette.PanelHi).padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(b.name, color = Palette.Text, fontSize = 14.sp, maxLines = 1, modifier = Modifier.weight(1f))
-        val s = b.stats
-        Text(
-            if (s.hands == 0) "—"
-            else st.hudLine(Math.round(s.vpip * 100).toInt(), Math.round(s.pfr * 100).toInt(), s.hands) +
-                (s.af?.let { " · AF %.1f".format(it) } ?: ""),
-            color = Palette.TextDim, fontSize = 12.sp, fontFamily = Numeric, maxLines = 1,
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(
-            st.styleName(b.style), color = if (b.style == BotStyle.GTO) Palette.TextDim else Palette.Gold,
-            fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1,
-            textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.width(64.dp),
-        )
-    }
+    val s = b.stats
+    Text(
+        if (s.hands == 0) "—"
+        else st.hudLine(Math.round(s.vpip * 100).toInt(), Math.round(s.pfr * 100).toInt(), s.hands) +
+            (s.af?.let { " · AF %.1f".format(it) } ?: ""),
+        color = Palette.TextDim, fontSize = 12.sp, fontFamily = Numeric, maxLines = 1,
+    )
+    Text(
+        st.styleName(b.style), color = if (b.style == BotStyle.GTO) Palette.TextDim else Palette.Gold,
+        fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+        textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.width(60.dp),
+    )
 }
 
 // ============================================================================ History

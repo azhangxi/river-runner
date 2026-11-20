@@ -346,30 +346,32 @@ class ScreenshotTest {
     }
 
     /** CHANGELOG.md must be packed into the APK assets, and the "What's new" card must lay out. */
-    /** 8 players, your turn on the flop, HUD and live GTO feedback on, "last hand" available. */
+    /** 8 players: you just called the flop bet, a bot is to act; HUD and live GTO feedback on, "last hand" available. */
     @Test fun t29_table_hud_feedback() {
         val s = Scenario(ZH, 8, 2, listOf("AsQs", "Kh5c", "9d9h", "Jc8c", "7h6h", "2c3d", "Td4s", "KcJd"), "Qd8s3hTs2s")
         s.play(Move.FOLD, Move.FOLD, Move.raiseTo(250), Move.CALL, Move.FOLD, Move.FOLD, Move.CALL, Move.FOLD)
         s.deal()
-        s.play(Move.CHECK, Move.raiseTo(400))
+        s.play(Move.CHECK, Move.raiseTo(400), Move.CALL)
         val huds = listOf(null, "18/12", "24/20", "45/8", "33/27", "61/40", "12/9", "22/18")
         val seats = s.seats().map { si ->
-            si.copy(hud = huds[si.seat]?.split('/')?.let { (v, p) -> ZH.hudLine(v.toInt(), p.toInt(), 24 + si.seat) })
+            si.copy(hud = huds[si.seat]?.split('/')?.let { (v, p) -> ZH.hudShort(v.toInt(), p.toInt()) })
         }
-        // your preflop call was a pot-sized raise in the GTO mix -> sizing deviation
+        // GTO mostly folds here and calls only 10% -> your call is a deviation
         val policy = com.riverrunner.engine.Policy(
-            listOf(Move.CALL to 0.55, Move.raiseTo(800) to 0.25, Move.FOLD to 0.20), null, 0.0, null, pot = 1000,
+            listOf(Move.FOLD to 0.62, Move.CALL to 0.10, Move.raiseTo(1400) to 0.28), null, 0.0, null, pot = 1650,
         )
-        val myRaise = Action(Street.PREFLOP, 0, ActionType.RAISE, 1200, 1200, false)
+        val myCall = Action(Street.FLOP, 0, ActionType.CALL, 400, 400, false)
         val base = s.ui(practice = true)
         val ui = base.copy(
-            table = TableMapper.build(ZH, s.e, seats, 1L, s.seq, TableMapper.Stage.LIVE, s.fmt, 0),
+            table = TableMapper.build(ZH, s.e, seats, 1L, s.seq, TableMapper.Stage.LIVE, s.fmt, 900),
             showHud = true, showDeviation = true, canReplayLast = true,
-            feedback = com.riverrunner.ui.DecisionFeedback(policy, myRaise, com.riverrunner.engine.Deviation.judge(policy, myRaise)),
+            feedback = com.riverrunner.ui.DecisionFeedback(policy, myCall, Deviation.judge(policy, myCall)),
         )
         table("29_table_hud_feedback", ui)
     }
 
+    // taller screen so the per-style counters below the presets are in the picture
+    @Config(sdk = [34], qualifiers = "w780dp-h520dp-land-xxhdpi")
     @Test fun t30_setup_custom_lineup() = shot("30_setup_custom_lineup") {
         com.riverrunner.ui.SetupContent(
             com.riverrunner.engine.SessionConfig(
