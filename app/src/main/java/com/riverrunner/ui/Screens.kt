@@ -347,7 +347,8 @@ fun ResultScreen(
         Column(Modifier.width(260.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(st.result, color = Palette.TextDim, fontSize = 14.sp)
             Text(
-                if (summary.heroPlace == 1) st.champion else st.placeN(summary.heroPlace),
+                // practice wording: the place only matters with rising blinds (ICM), and is never a "champion"
+                if (summary.mode == GameMode.TOURNAMENT) st.placeN(summary.heroPlace) else st.champion,
                 color = Palette.Gold, fontSize = 30.sp, fontWeight = FontWeight.Bold,
             )
             if (summary.endedEarly) Text(st.endedEarly, color = Palette.TextDim, fontSize = 13.sp)

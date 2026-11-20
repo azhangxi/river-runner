@@ -415,6 +415,21 @@ class ScreenshotTest {
         shot("31_result_report") { com.riverrunner.ui.ResultScreen(vm, summary, report) }
     }
 
+    /** The reported case: 8 players, rising blinds (extra level line), practice on, your turn, HUD and last hand on. */
+    @Test fun t32_side_panel_room() {
+        val s = Scenario(ZH, 8, 2, listOf("AsQs", "Kh5c", "9d9h", "Jc8c", "7h6h", "2c3d", "Td4s", "KcJd"), "Qd8s3hTs2s")
+        s.play(Move.FOLD, Move.FOLD, Move.raiseTo(250), Move.CALL, Move.FOLD, Move.FOLD, Move.CALL, Move.FOLD)
+        s.deal()
+        s.play(Move.CHECK, Move.raiseTo(400))
+        val seats = s.seats().map { si -> if (si.isHero) si else si.copy(hud = ZH.hudShort(22, 17)) }
+        val base = s.ui(practice = true)
+        val ui = base.copy(
+            table = TableMapper.build(ZH, s.e, seats, 1L, s.seq, TableMapper.Stage.LIVE, s.fmt, 0),
+            levelText = "级别 4 · 2手后涨盲", showHud = true, showDeviation = true, canReplayLast = true,
+        )
+        table("32_side_panel_room", ui)
+    }
+
     @Test fun t27_whats_new() {
         val vm = AppViewModel(ApplicationProvider.getApplicationContext<Application>())
         org.junit.Assert.assertTrue("changelog.md is not in the app assets", vm.changelog.isNotEmpty())

@@ -8,6 +8,15 @@ One section per version, newest first. Each line is `Chinese | English`.
 CI takes the version from the top section (`## 0.4` builds 0.4.x) and copies that section into
 the GitHub release notes; the in-app "What's new" reads this file too.
 
+## 0.6 · 2026-11-20
+
+### 改进 | Changed
+- 界面用词改为练习软件的说法：开始练习、练习记录、本组结束、再练一组、里程碑、练习档案；“筹码局 / 锦标赛”改为“固定盲注 / 涨盲·ICM” | Practice wording throughout: start practice, practice log, session complete, milestones, practice profiles; cash and tournament modes are now fixed blinds and rising blinds (ICM)
+- 牌桌侧栏的开关、音效和新手指南收进 ⚙ 菜单，“复盘上一手”改成标题行的 ⟲ 图标，练习信息和行动记录不再被挤压 | The table switches, sound and guide move into a ⚙ menu and "last hand" becomes a ⟲ icon, so practice info and the action log keep their room
+
+### 修复 | Fixed
+- 涨盲模式下开启练习信息时，侧栏的底池、牌型和 SPR 被遮挡 | With rising blinds and practice info on, the pot, hand and SPR lines in the side panel were cut off
+
 ## 0.5 · 2026-11-19
 
 ### 新增 | Added

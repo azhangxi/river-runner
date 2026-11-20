@@ -15,7 +15,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.layout.heightIn
 import com.riverrunner.engine.Deviation
 import com.riverrunner.engine.MoveType
@@ -198,46 +201,24 @@ private fun SidePanel(
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        // header
+        // header: hand number, then star / last hand / table menu / leave. The switches live in the
+        // menu so the practice info and the action log keep their room on short screens.
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(st.handNo(ui.handNumber), color = Palette.Text, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f))
                 RoundIcon(if (ui.starred) "★" else "☆", st.starHand, onStar)
+                // the previous hand of this session, e.g. after skipping its review by mistake
+                if (ui.canReplayLast) {
+                    Spacer(Modifier.width(4.dp))
+                    RoundIcon("⟲", st.replayLast, onReplayLast)
+                }
                 Spacer(Modifier.width(4.dp))
-                RoundIcon(if (ui.soundOn) "🔊" else "🔇", st.sound, onSound)
-                Spacer(Modifier.width(4.dp))
-                RoundIcon("?", st.guide, onHelp)
+                TableMenu(ui, onPractice, onReview, onHud, onDeviation, onSound, onHelp)
                 Spacer(Modifier.width(4.dp))
                 RoundIcon("✕", st.exit, onExit)
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(ui.blindsText, color = Palette.TextDim, fontSize = 11.sp, maxLines = 1)
-                    if (ui.levelText != null) Text(ui.levelText, color = Palette.Gold, fontSize = 11.sp, maxLines = 1)
-                }
-                // the previous hand of this session, e.g. after skipping its review by mistake
-                if (ui.canReplayLast) {
-                    Box(
-                        Modifier.heightIn(min = 30.dp).pressable(onClick = onReplayLast).clip(RoundedCornerShape(50))
-                            .background(Palette.PanelHi).padding(horizontal = 8.dp)
-                            .semantics { role = Role.Button },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("⟲ " + st.replayLast, color = Palette.Text, fontSize = 11.sp, maxLines = 1)
-                    }
-                }
-            }
-        }
-        // switches: practice info, review each hand, HUD, live GTO feedback
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                ToggleChip(st.chipPractice, ui.practice, onPractice, Modifier.weight(1f))
-                ToggleChip(st.chipReview, ui.reviewEach, onReview, Modifier.weight(1f))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                ToggleChip(st.chipHud, ui.showHud, onHud, Modifier.weight(1f))
-                ToggleChip(st.chipDeviation, ui.showDeviation, onDeviation, Modifier.weight(1f))
-            }
+            Text(ui.blindsText, color = Palette.TextDim, fontSize = 11.sp, maxLines = 1)
+            if (ui.levelText != null) Text(ui.levelText, color = Palette.Gold, fontSize = 11.sp, maxLines = 1)
         }
         // middle: feedback on your last decision, then results, or practice info + action log
         Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -291,22 +272,55 @@ private fun pulse(): Float {
     return v
 }
 
-/** Compact on/off switch for the side panel; announced as a switch with its state. */
+/** ⚙ menu with the table switches (practice info, review each hand, HUD, feedback, sound) and the guide. */
 @Composable
-private fun ToggleChip(label: String, on: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(8.dp)
-    Box(
-        modifier.height(30.dp).clip(shape)
-            .background(if (on) Palette.AccentDim else Palette.PanelHi)
-            .border(1.dp, if (on) Palette.Accent.copy(alpha = 0.8f) else Color.Transparent, shape)
-            .toggleable(value = on, onValueChange = onChange, role = Role.Switch),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            (if (on) "● " else "○ ") + label, color = if (on) Palette.Text else Palette.TextDim,
-            fontSize = 12.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, maxLines = 1,
-        )
+private fun TableMenu(
+    ui: TableScreenUi,
+    onPractice: (Boolean) -> Unit,
+    onReview: (Boolean) -> Unit,
+    onHud: (Boolean) -> Unit,
+    onDeviation: (Boolean) -> Unit,
+    onSound: () -> Unit,
+    onHelp: () -> Unit,
+) {
+    val st = LocalStrings.current
+    var open by remember { mutableStateOf(false) }
+    Box {
+        RoundIcon("⚙", st.settings) { open = true }
+        DropdownMenu(
+            expanded = open, onDismissRequest = { open = false },
+            containerColor = Palette.PanelHi, border = BorderStroke(1.dp, Palette.Line),
+        ) {
+            // switches keep the menu open so several can be changed at once
+            MenuSwitch(st.chipPractice, ui.practice) { onPractice(!ui.practice) }
+            MenuSwitch(st.chipReview, ui.reviewEach) { onReview(!ui.reviewEach) }
+            MenuSwitch(st.chipHud, ui.showHud) { onHud(!ui.showHud) }
+            MenuSwitch(st.chipDeviation, ui.showDeviation) { onDeviation(!ui.showDeviation) }
+            MenuSwitch(st.sound, ui.soundOn) { onSound() }
+            DropdownMenuItem(
+                text = { Text(st.guide, color = Palette.Text, fontSize = 14.sp) },
+                onClick = { open = false; onHelp() },
+            )
+        }
     }
+}
+
+@Composable
+private fun MenuSwitch(label: String, on: Boolean, onToggle: () -> Unit) {
+    DropdownMenuItem(
+        text = { Text(label, color = Palette.Text, fontSize = 14.sp) },
+        trailingIcon = {
+            Text(
+                if (on) "●" else "○", color = if (on) Palette.Accent else Palette.TextDim, fontSize = 16.sp,
+                modifier = Modifier.padding(start = 16.dp),
+            )
+        },
+        onClick = onToggle,
+        modifier = Modifier.semantics {
+            role = Role.Switch
+            stateDescription = if (on) "on" else "off"
+        },
+    )
 }
 
 /** GTO feedback on your last decision: verdict, then the GTO action mix and bet sizes. */

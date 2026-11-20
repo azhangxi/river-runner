@@ -68,8 +68,18 @@ jobs:
       - name: Build release APK
         if: github.event_name != 'pull_request'
         run: |
-          ./gradlew :app:assembleRelease --no-daemon 2>&1 | tee build.log
-          exit ${PIPESTATUS[0]}
+          # Retry only when Gradle could not download a plugin or dependency (network), never on a real
+          # compile or test failure. (Actions runs bash with -e and pipefail, which would stop at the first failure.)
+          set +e
+          for attempt in 1 2 3; do
+            ./gradlew :app:assembleRelease --no-daemon 2>&1 | tee build.log
+            status=${PIPESTATUS[0]}
+            [ "$status" -eq 0 ] && break
+            grep -qE "was not found in any of the following sources|Could not resolve|Could not GET|Could not HEAD|Connection reset|Read timed out|Connect timed out" build.log || break
+            echo "::warning::Gradle download failed, retrying (attempt $attempt)"
+            sleep 20
+          done
+          exit $status
 
       - name: Shred signing key
         if: always()
@@ -151,8 +161,18 @@ jobs:
 
       - name: Render screenshots
         run: |
-          ./gradlew :app:recordRoborazziDebug --no-daemon 2>&1 | tee render.log
-          exit ${PIPESTATUS[0]}
+          # Retry only when Gradle could not download a plugin or dependency (network), never on a real
+          # compile or test failure. (Actions runs bash with -e and pipefail, which would stop at the first failure.)
+          set +e
+          for attempt in 1 2 3; do
+            ./gradlew :app:recordRoborazziDebug --no-daemon 2>&1 | tee render.log
+            status=${PIPESTATUS[0]}
+            [ "$status" -eq 0 ] && break
+            grep -qE "was not found in any of the following sources|Could not resolve|Could not GET|Could not HEAD|Connection reset|Read timed out|Connect timed out" render.log || break
+            echo "::warning::Gradle download failed, retrying (attempt $attempt)"
+            sleep 20
+          done
+          exit $status
 
       - name: Report render errors
         if: failure()

@@ -334,15 +334,15 @@ private val TERMS = listOf(
     Term("顶对 / 超对 / 暗三条", "顶对 Top pair：用底牌配上公共牌最大的那张。超对 Overpair：口袋对子比所有公共牌都大。暗三条 Set：口袋对子配中公共牌。", "Top pair / Overpair / Set", "Top pair: pairing the highest board card. Overpair: a pocket pair above every board card. Set: a pocket pair that hits the board."),
     Term("翻牌 / 转牌 / 河牌", "第 3、4、5 张公共牌出现的三个阶段（翻牌一次发三张）。", "Flop / Turn / River", "The 3-card, 4th and 5th community card stages."),
     Term("摊牌 Showdown", "最后一轮下注结束后亮牌比大小。", "Showdown", "Showing hands after the last betting round."),
-    Term("ICM / 独立筹码模型", "锦标赛里把筹码换算成奖金价值的模型。临近奖励圈时，输光的代价更大，需要更紧。", "ICM", "Converts tournament chips into prize value. Near the money, busting costs more, so play tighter.", "Independent Chip Model"),
-    Term("泡沫 Bubble", "离进入奖励圈只差一个人出局的阶段。", "Bubble", "When one more elimination puts everyone left in the money."),
-    Term("ITM / 进入奖励圈", "锦标赛中进入有奖名次。", "ITM", "Finishing in a paid place in a tournament.", "In The Money"),
+    Term("ICM / 独立筹码模型", "锦标赛结构里把筹码换算成名次价值的模型。临近 ITM 名次时，输光的代价更大，需要更紧。", "ICM", "Converts tournament chips into prize value. Near the money, busting costs more, so play tighter.", "Independent Chip Model"),
+    Term("泡沫 Bubble", "离进入 ITM 名次只差一个人出局的阶段。", "Bubble", "When one more elimination puts everyone left in the money."),
+    Term("ITM / 进入前列", "锦标赛结构中进入靠前的计分名次。", "ITM", "Finishing in a paid place in a tournament.", "In The Money"),
     Term("推/弃 Push/Fold", "筹码很短（约 15BB 以下）时，只选择全下或弃牌的打法。", "Push/fold", "With a short stack (under ~15 BB) you either go all-in or fold."),
     Term("NLHE / 无限注德州", "下注上限只受自己筹码限制的德州扑克，本软件就是这种。", "NLHE", "Hold'em where the only betting limit is your stack — what this app plays.", "No-Limit Hold'em"),
     Term("VPIP / 主动入池率", "翻牌前自愿投入筹码（跟注或加注，不含盲注）的比例。常规玩家 6 人桌约 20–28%。", "VPIP", "How often you put chips in preflop by choice (blinds don't count). Typical 6-max regulars: about 20–28%.", "Voluntarily Put money In Pot"),
     Term("PFR / 翻前加注率", "翻牌前加注的比例。和 VPIP 越接近，说明越少溜入/跟注，打法越主动。", "PFR", "How often you raise preflop. The closer to VPIP, the more aggressive.", "Pre-Flop Raise"),
     Term("WTSD / 摊牌率", "看到翻牌后一路打到摊牌的比例。", "WTSD", "How often you reach showdown after seeing the flop.", "Went To ShowDown"),
-    Term("W\$SD / 摊牌胜率", "打到摊牌时赢钱的比例。", "W\$SD", "How often you win money when you reach showdown.", "Won \$ at ShowDown"),
+    Term("W\$SD / 摊牌胜率", "打到摊牌时赢下底池的比例。", "W\$SD", "How often you win money when you reach showdown.", "Won \$ at ShowDown"),
     Term("BB/100", "每 100 手赢多少个大盲，衡量胜率的标准指标。", "BB/100", "Big blinds won per 100 hands — the standard win-rate measure.", "Big Blinds per 100 hands"),
     Term("TAG / 紧凶", "玩得少，但一旦入池就主动下注加注。", "TAG", "Plays few hands but bets and raises them.", "Tight-Aggressive"),
     Term("LAG / 松凶", "玩得多且主动。", "LAG", "Plays many hands aggressively.", "Loose-Aggressive"),
@@ -375,8 +375,8 @@ private val TIPS_ZH = listOf(
     "4. 重视位置" to "同样的牌，在按钮位比在前位好打得多。位置差时少玩边缘牌。",
     "5. 不要爱上一对" to "顶对在多人底池、湿润牌面、对手大额加注时经常已经落后。对手很被动却突然加注，通常代表强牌。",
     "6. 针对对手调整" to "在混合桌：对跟注站少诈唬、多价值下注；对紧弱玩家多偷盲；对疯子用好牌让他来诈唬你。",
-    "7. 每局复盘" to "去\"牌局记录\"打开输得多的手牌，看每条街的胜率和 GTO 建议，标记\"偏离\"的地方就是要改进的地方。",
-    "8. 锦标赛：筹码短就推/弃" to "低于 15 个大盲时，宁可全下或弃牌，也不要小额加注后被迫弃牌。临近奖励圈时谨慎跟注别人的全下。",
+    "7. 每组复盘" to "去\"练习记录\"打开输得多的手牌，看每条街的胜率和 GTO 建议，标记\"偏离\"的地方就是要改进的地方。",
+    "8. 锦标赛：筹码短就推/弃" to "低于 15 个大盲时，宁可全下或弃牌，也不要小额加注后被迫弃牌。临近 ITM 名次时谨慎跟注别人的全下。",
 )
 
 private val TIPS_EN = listOf(
@@ -391,12 +391,12 @@ private val TIPS_EN = listOf(
 )
 
 private val APP_ZH = listOf(
-    "模式" to "筹码局：盲注固定，NPC 输光离场，打到只剩一人或你退出时按筹码结算排名。锦标赛：每 N 手涨盲，后期加前注，奖励按名次分配，NPC 会考虑 ICM。注意：涨盲后所有人的筹码没有变，但用大盲(BB)衡量的数字会越来越小——这正是锦标赛逼大家行动的方式。",
+    "模式" to "固定盲注：盲注不变，NPC 输光离场，打到只剩一人或你结束练习时生成小结。涨盲·ICM：按单桌锦标赛的结构练习，每 N 手涨盲，后期加前注，NPC 会考虑 ICM。注意：涨盲后所有人的筹码没有变，但用大盲(BB)衡量的数字会越来越小——这正是锦标赛结构逼大家行动的方式。",
     "牌桌" to "GTO桌：所有 NPC 使用近似 GTO 策略，适合练习\"不被剥削\"。混合桌：随机分配紧凶、松凶、跟注站、紧弱、疯子、GTO 等风格，更像真实牌局，适合练习剥削。",
     "音效" to "牌桌右上角 🔊 可以随时静音，设置里也能关闭。快进时自动静音。",
-    "练习模式" to "牌局中随时开关。打开后在你行动时显示底池、需跟注、底池赔率、所需胜率、SPR 和你当前的牌型，但不会显示胜率。",
+    "练习模式" to "练习中随时开关。打开后在你行动时显示底池、需跟注、底池赔率、所需胜率、SPR 和你当前的牌型，但不会显示胜率。",
     "本手结束" to "每手结束后会亮出摊牌玩家的底牌、高亮赢家的 5 张牌，并在右侧显示结果。点\"下一手\"才会继续。你弃牌后可以点\"快进本手\"。",
-    "复盘" to "\"牌局记录\"保存最近 1000 手，点开可以一步步回放，显示所有人底牌、每条街的胜率，并在你的每个决策点给出 GTO 建议和\"符合/偏离\"标记。点 ☆ 可以永久收藏。",
+    "复盘" to "\"练习记录\"保存最近 1000 手，点开可以一步步回放，显示所有人底牌、每条街的胜率，并在你的每个决策点给出 GTO 建议和\"符合/偏离\"标记。点 ☆ 可以永久收藏。",
     "统计" to "VPIP、PFR、3-Bet、摊牌率、BB/100、各位置输赢以及生涯成绩。",
 )
 
