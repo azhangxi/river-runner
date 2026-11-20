@@ -102,10 +102,10 @@ object Achievements {
         a("royal", AchCategory.HANDS, "皇", Progress.WON_ROYAL, 1, "皇家同花顺", "用皇家同花顺赢下摊牌", "Royal flush", "Win a showdown with a royal flush"),
 
         a("first_itm", AchCategory.TOURNAMENT, "圈", Progress.TOURNEY_ITM, 1, "进入前列", "涨盲练习中进入 ITM 名次", "In the money", "Finish a tournament in a paid place"),
-        a("first_title", AchCategory.TOURNAMENT, "首", Progress.TOURNEY_WINS, 1, "首次第一", "涨盲练习中排名第一", "Champion", "Win a tournament"),
-        a("titles_5", AchCategory.TOURNAMENT, "5", Progress.TOURNEY_WINS, 5, "五次第一", "涨盲练习中 5 次排名第一", "Five titles", "Win 5 tournaments"),
-        a("hu_champ", AchCategory.TOURNAMENT, "1v1", Progress.HU_TITLES, 1, "单挑第一", "2 人涨盲练习中排名第一", "Heads-up king", "Win a 2-player tournament"),
-        a("full_table", AchCategory.TOURNAMENT, "8", Progress.FULL_TABLE_TITLES, 1, "满桌第一", "8 人涨盲练习中排名第一", "Full table", "Win an 8-player tournament"),
+        a("first_title", AchCategory.TOURNAMENT, "冠", Progress.TOURNEY_WINS, 1, "首个冠军", "涨盲练习中拿到第一名", "Champion", "Win a tournament"),
+        a("titles_5", AchCategory.TOURNAMENT, "5", Progress.TOURNEY_WINS, 5, "五冠王", "涨盲练习中 5 次拿到第一名", "Five titles", "Win 5 tournaments"),
+        a("hu_champ", AchCategory.TOURNAMENT, "1v1", Progress.HU_TITLES, 1, "单挑之王", "2 人涨盲练习中拿到第一名", "Heads-up king", "Win a 2-player tournament"),
+        a("full_table", AchCategory.TOURNAMENT, "8", Progress.FULL_TABLE_TITLES, 1, "满桌通吃", "8 人涨盲练习中拿到第一名", "Full table", "Win an 8-player tournament"),
 
         a("cash_up_50", AchCategory.CASH, "+50", Progress.MAX_CASH_PROFIT_BB, 50, "满载而归", "一组固定盲注练习结束时盈利 50 BB 以上", "Good session", "Finish a cash session up 50 BB or more"),
         a("double_up", AchCategory.CASH, "×2", Progress.CASH_DOUBLE_UPS, 1, "翻倍", "一组固定盲注练习结束时筹码翻倍", "Double up", "Double your stack in a cash session"),
