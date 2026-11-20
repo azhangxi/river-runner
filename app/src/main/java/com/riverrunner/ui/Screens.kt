@@ -423,7 +423,7 @@ private fun DeviationSummary(t: DeviationTally) {
         val streets = listOf(Street.PREFLOP to st.preflop, Street.FLOP to st.flop, Street.TURN to st.turn, Street.RIVER to st.river)
         Text(st.byStreet, color = Palette.TextDim, fontSize = 12.sp)
         DeviationBars(streets.mapNotNull { (s, name) -> t.byStreet[s]?.let { name to it } })
-        Text(st.byPosition, color = Palette.TextDim, fontSize = 12.sp)
+        Text(st.devByPosition, color = Palette.TextDim, fontSize = 12.sp)
         DeviationBars(t.byPosition.entries.sortedByDescending { it.value.first }.map { it.key to it.value })
     }
 }
