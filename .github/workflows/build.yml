@@ -50,7 +50,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Engine unit tests
-        run: ./gradlew :engine:test --no-daemon
+        run: ./gradlew :engine:jvmTest --no-daemon
 
       - name: Restore signing key
         if: github.event_name != 'pull_request'
@@ -196,3 +196,71 @@ jobs:
           git add -A
           git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -qm "Screenshots for ${GITHUB_SHA::7}"
           git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" screenshots
+
+  # Web version (iPhone and other browsers): Wasm build with a JS fallback for older browsers.
+  # The log always goes to the web-logs branch; a successful build is published to gh-pages,
+  # which GitHub Pages serves at https://<owner>.github.io/<repo>/.
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build web app
+        run: |
+          # Retry only when a download failed (network), never on a real compile failure.
+          # (Actions runs bash with -e and pipefail, which would stop at the first failure.)
+          set +e
+          for attempt in 1 2 3; do
+            ./gradlew :web:composeCompatibilityBrowserDistribution --no-daemon 2>&1 | tee web.log
+            status=${PIPESTATUS[0]}
+            [ "$status" -eq 0 ] && break
+            grep -qE "was not found in any of the following sources|Could not resolve|Could not GET|Could not HEAD|Connection reset|Read timed out|Connect timed out" web.log || break
+            echo "::warning::Gradle download failed, retrying (attempt $attempt)"
+            sleep 20
+          done
+          exit $status
+
+      - name: Report web build errors
+        if: failure()
+        run: |
+          touch web.log
+          grep -E "^e: |What went wrong|Could not|error:" -A3 web.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+
+      - name: Publish log to web-logs branch
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/weblog
+          cp web.log /tmp/weblog/ 2>/dev/null || touch /tmp/weblog/web.log
+          # where the distributions ended up, to check the publish step
+          find web/build/dist -maxdepth 3 -type d > /tmp/weblog/dist-dirs.txt 2>/dev/null || true
+          cd /tmp/weblog
+          echo "${GITHUB_SHA}" > COMMIT
+          git init -q && git checkout -q -b web-logs && git add -A
+          git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -qm "web log ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" web-logs
+
+      - name: Publish to gh-pages
+        if: success() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/dev-web'))
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          dist=$(find web/build/dist -type d -path "*omposeWebCompatibility*" -name productionExecutable | head -1)
+          [ -n "$dist" ] || dist=$(dirname "$(grep -rl --include=index.html riverRunner.js web/build/dist | head -1)")
+          echo "publishing $dist"
+          ls -la "$dist"
+          mkdir -p /tmp/site && cp -r "$dist"/. /tmp/site/
+          cd /tmp/site
+          touch .nojekyll
+          echo "${GITHUB_SHA}" > COMMIT
+          git init -q && git checkout -q -b gh-pages && git add -A
+          git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -qm "Web app ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages

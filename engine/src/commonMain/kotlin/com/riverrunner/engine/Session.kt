@@ -1,5 +1,6 @@
 package com.riverrunner.engine
 
+import kotlin.math.pow
 import kotlin.random.Random
 
 enum class GameMode(val code: String) { CASH("C"), TOURNAMENT("T");
@@ -19,7 +20,7 @@ data class SessionConfig(
     val handsPerLevel: Int = 10,
     /** cash: ante as a fraction of the big blind (0 = none) */
     val cashAnteFraction: Double = 0.0,
-    val seed: Long = System.nanoTime(),
+    val seed: Long = Random.nextLong(),
     /** mixed table line-up; null = every bot seat draws a random style (GTO included) */
     val styleMix: StyleMix? = null,
 )
@@ -69,7 +70,7 @@ class GameSession(val config: SessionConfig) {
 
         fun levelFor(index: Int): BlindLevel {
             val bb = if (index < BB_SCHEDULE.size) BB_SCHEDULE[index]
-            else (BB_SCHEDULE.last() * Math.pow(1.25, (index - BB_SCHEDULE.size + 1).toDouble())).toInt() / 100 * 100
+            else (BB_SCHEDULE.last() * 1.25.pow((index - BB_SCHEDULE.size + 1).toDouble())).toInt() / 100 * 100
             val ante = if (index >= 3) (bb / 8) / 5 * 5 else 0
             return BlindLevel(index + 1, bb / 2, bb, ante)
         }
