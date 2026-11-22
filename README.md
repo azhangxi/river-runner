@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <b>An offline Texas Hold'em drill partner for Android.</b><br>
-  <sub>No account · no ads · no in-app purchases · no network permission · 1.6 MB</sub>
+  <b>An offline Texas Hold'em drill partner for Android and the web.</b><br>
+  <sub>No account · no ads · no in-app purchases</sub>
 </p>
 
 <p align="center">
@@ -22,6 +22,14 @@
   <img alt="No permissions" src="https://img.shields.io/badge/permissions-none-4FC88A?style=flat-square&labelColor=0C1310">
   <img alt="licence-MIT" src="https://img.shields.io/badge/license-MIT-E6B54F?style=flat-square&labelColor=0C1310">
 </p>
+
+## iPhone / Web
+
+1. Open the published HTTPS link in Safari. On a computer, open the same link in your browser.
+2. On iPhone, tap Share, choose **Add to Home Screen**, and enable **Open as Web App** if shown.
+3. Open River Runner from the Home Screen once while online to let it download its offline files.
+
+在 iPhone 上用 Safari 打开发布链接，点「分享」→「添加到主屏幕」，如有「作为网页 App 打开」选项就开启。添加后先联网启动一次，等离线文件加载完成即可断网练习。牌局记录和存档保存在当前设备的网页 App 中。
 
 ## What it is
 
@@ -125,6 +133,7 @@ Styles (TAG, LAG, station, nit, maniac) shift range widths, aggression, bluffing
 
 - **`engine/`** — a plain Kotlin JVM module with no Android dependency: hand evaluator, NLHE state machine with side pots and all-ins, ICM, Monte Carlo equity, bot ranges, hand records and replay, stats. `./gradlew :engine:test` runs it all on a laptop.
 - **`app/`** — Jetpack Compose, landscape, one hand-written design system (see [DESIGN.md](DESIGN.md)).
+- **`web/`** — an installable web app that compiles the same poker engine with Kotlin/JS.
 - **The screenshots above are generated, not taken.** Robolectric + Roborazzi render them on the JVM in CI (`./gradlew :app:recordRoborazziDebug`) and publish to the [`screenshots`](https://github.com/shunzhe1121/river-runner/tree/screenshots) branch — deterministic, no emulator, no device. The copies in `docs/shots/` are pulled from that branch.
 
 ## Build / 构建
@@ -135,6 +144,20 @@ Styles (TAG, LAG, station, nit, maniac) shift range widths, aggression, bluffing
 ```
 
 Barlow Condensed is bundled under the SIL Open Font License (`licenses/`).
+
+### Web build and deployment
+
+With Java 17 and Node.js installed, run from the repository root:
+
+```bash
+./gradlew -p web jsBrowserDistribution
+node web/finalize-pwa.mjs
+python3 -m http.server 8080 --bind 127.0.0.1 --directory web/build/dist/js/productionExecutable
+```
+
+Open `http://localhost:8080/` on the computer. To try it on a phone over Wi-Fi, bind to `0.0.0.0` and open `http://<computer-LAN-IP>:8080/` on the phone. Offline installation on iPhone requires a trusted HTTPS URL.
+
+Publish the contents of `web/build/dist/js/productionExecutable/` to a static HTTPS host. For branch-based GitHub Pages, put those files and an empty `.nojekyll` file at the root of a `gh-pages` branch. In **Settings → Pages**, pick **Deploy from a branch** and select `gh-pages` and `/ (root)`.
 
 ## Signing and verification
 

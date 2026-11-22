@@ -1,6 +1,5 @@
 package com.riverrunner.i18n
 
-import androidx.compose.runtime.staticCompositionLocalOf
 import com.riverrunner.engine.BotStyle
 
 /** All UI text. Two instances (Chinese / English) so the language can switch instantly in-app. */
@@ -402,7 +401,7 @@ val ZH = Strings(
     othersFolded = "其他人弃牌",
     topPercent = { "前 $it%" },
     handNo = { "第 $it 手" },
-    blindsText = { sb, bb, ante -> "盲注 %,d/%,d".format(sb, bb) + if (ante > 0) " · 前注 %,d".format(ante) else "" },
+    blindsText = { sb, bb, ante -> "盲注 ${groupedChips(sb)}/${groupedChips(bb)}" + if (ante > 0) " · 前注 ${groupedChips(ante)}" else "" },
     levelText = { lvl, left -> "级别 $lvl · ${left}手后涨盲" },
     yourTurn = "轮到你了",
     thinking = { "$it 思考中…" },
@@ -646,7 +645,7 @@ val EN = Strings(
     othersFolded = "everyone else folded",
     topPercent = { "top $it%" },
     handNo = { "Hand $it" },
-    blindsText = { sb, bb, ante -> "Blinds %,d/%,d".format(sb, bb) + if (ante > 0) " · ante %,d".format(ante) else "" },
+    blindsText = { sb, bb, ante -> "Blinds ${groupedChips(sb)}/${groupedChips(bb)}" + if (ante > 0) " · ante ${groupedChips(ante)}" else "" },
     levelText = { lvl, left -> "Level $lvl · up in $left" },
     yourTurn = "Your turn",
     thinking = { "$it is thinking…" },
@@ -722,4 +721,9 @@ val EN = Strings(
     },
 )
 
-val LocalStrings = staticCompositionLocalOf { ZH }
+
+private fun groupedChips(value: Int): String {
+    val sign = if (value < 0) "-" else ""
+    val digits = value.toString().removePrefix("-")
+    return sign + digits.reversed().chunked(3).joinToString(",").reversed()
+}

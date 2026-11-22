@@ -1,0 +1,124 @@
+.reference-screen {
+  max-inline-size: 44rem;
+  line-height: 1.55;
+}
+
+.reference-screen h2 {
+  margin-block: 0 1rem;
+}
+
+.reference-screen details {
+  border-block-start: 1px solid var(--line, #465c4f);
+}
+
+.reference-screen details:last-child {
+  border-block-end: 1px solid var(--line, #465c4f);
+}
+
+.reference-screen summary {
+  min-block-size: 44px;
+  box-sizing: border-box;
+  padding: .625rem .25rem;
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.reference-chapter {
+  padding: 0 .25rem .75rem;
+}
+
+.reference-chapter h3 {
+  font-size: 1rem;
+  margin-block: .75rem .375rem;
+}
+
+.reference-chapter p {
+  margin-block: 0 .75rem;
+}
+
+.reference-chapter li + li {
+  margin-block-start: .5rem;
+}
+
+.reference-entries,
+.reference-ranks {
+  padding-inline-start: 1.5rem;
+}
+
+.reference-hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+  margin-block: -.375rem .75rem;
+}
+
+.reference-card {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 4px;
+  min-inline-size: 2.1rem;
+  min-block-size: 2.5rem;
+  background: #f7f3e7;
+  color: #191f1b;
+  font-weight: 700;
+}
+
+.reference-card-red {
+  color: #a51e2d;
+}
+
+.reference-positions {
+  display: grid;
+  grid-template: auto minmax(4rem, auto) auto / 1fr 1fr 1fr;
+  gap: .5rem;
+  max-inline-size: 28rem;
+  margin: .5rem auto 1rem;
+  text-align: center;
+  font-size: .875rem;
+}
+
+.reference-positions p {
+  display: grid;
+  place-content: center;
+  grid-area: 2 / 2;
+  padding-inline: .5rem;
+  margin: 0;
+  border-radius: 50%;
+  background: #0c3a25;
+  color: #eef1ea;
+}
+
+.reference-positions ol {
+  display: contents;
+}
+
+.reference-positions li,
+.reference-positions li + li {
+  list-style: none;
+  margin: 0;
+  align-self: center;
+  font-weight: 650;
+}
+
+.reference-seat-0 { grid-area: 3 / 2; }
+.reference-seat-1 { grid-area: 3 / 1; }
+.reference-seat-2 { grid-area: 2 / 1; }
+.reference-seat-3 { grid-area: 1 / 1; }
+.reference-seat-4 { grid-area: 1 / 2; }
+.reference-seat-5 { grid-area: 1 / 3; }
+.reference-seat-6 { grid-area: 2 / 3; }
+.reference-seat-7 { grid-area: 3 / 3; }
+
+.reference-glossary dt {
+  font-weight: 650;
+}
+
+.reference-glossary dt i {
+  font-size: .875em;
+  font-weight: normal;
+}
+
+.reference-glossary dd {
+  margin-inline-start: 0;
+  margin-block-end: .75rem;
+}

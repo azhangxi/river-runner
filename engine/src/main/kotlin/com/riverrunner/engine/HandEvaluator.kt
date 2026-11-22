@@ -42,10 +42,10 @@ object HandEvaluator {
 
         // Flush / straight flush
         var flushMask = -1
-        if (Integer.bitCount(s0) >= 5) flushMask = s0
-        else if (Integer.bitCount(s1) >= 5) flushMask = s1
-        else if (Integer.bitCount(s2) >= 5) flushMask = s2
-        else if (Integer.bitCount(s3) >= 5) flushMask = s3
+        if (s0.countOneBits() >= 5) flushMask = s0
+        else if (s1.countOneBits() >= 5) flushMask = s1
+        else if (s2.countOneBits() >= 5) flushMask = s2
+        else if (s3.countOneBits() >= 5) flushMask = s3
         if (flushMask >= 0) {
             val sf = straightHigh[flushMask]
             if (sf >= 0) return (STRAIGHT_FLUSH shl 20) or (sf shl 16)
@@ -82,7 +82,7 @@ object HandEvaluator {
             val kick = topN(all and (1 shl t).inv(), 2)
             return (TRIPS shl 20) or (t shl 16) or (kick ushr 4)
         }
-        if (Integer.bitCount(pairs) >= 2) {
+        if (pairs.countOneBits() >= 2) {
             val p1 = highBit(pairs)
             val p2 = highBit(pairs and (1 shl p1).inv())
             val kicker = highBit(all and (1 shl p1).inv() and (1 shl p2).inv())
@@ -109,7 +109,7 @@ object HandEvaluator {
         return cards.copyOf(5)
     }
 
-    private fun highBit(m: Int): Int = 31 - Integer.numberOfLeadingZeros(m)
+    private fun highBit(m: Int): Int = 31 - m.countLeadingZeroBits()
 
     /** Packs the top n ranks of mask into nibbles starting at bit 16 going down. */
     private fun topN(mask: Int, n: Int): Int {

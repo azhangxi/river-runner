@@ -84,7 +84,7 @@ data class HandRecord(
         } catch (e: Exception) { null }
 
         fun from(engine: HandEngine, mode: GameMode, handNumber: Int, heroSeat: Int, tableSize: Int, styles: Map<Int, BotStyle>): HandRecord {
-            val now = System.currentTimeMillis()
+            val now = timestampNow()
             return HandRecord(
                 id = now * 1000 + (handNumber % 1000),
                 time = now,

@@ -14,3 +14,7 @@ tasks.test {
     useJUnitPlatform()
     testLogging { events("passed", "failed") }
 }
+
+kotlin.sourceSets.main {
+    kotlin.srcDir("src/jvmMain/kotlin")
+}

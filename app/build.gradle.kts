@@ -9,6 +9,8 @@ android {
     namespace = "com.riverrunner"
     compileSdk = 35
 
+    sourceSets["main"].java.srcDir("../shared/src/main/kotlin")
+
     defaultConfig {
         applicationId = "com.riverrunner"
         minSdk = 26

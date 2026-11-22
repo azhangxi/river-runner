@@ -1,5 +1,7 @@
 package com.riverrunner.engine
 
+import kotlin.math.roundToLong
+
 import kotlin.random.Random
 
 /** Counter keys stored in a save slot. Keys starting with "max_" keep the largest value seen. */
@@ -225,13 +227,13 @@ object Facts {
         when (s.mode) {
             GameMode.CASH -> {
                 d[Progress.CASH_SESSIONS] = 1
-                d[Progress.CASH_PROFIT_CENTI_BB] = Math.round(s.heroProfit * 100)
+                d[Progress.CASH_PROFIT_CENTI_BB] = (s.heroProfit * 100).roundToLong()
                 if (s.heroProfit > 0) d[Progress.MAX_CASH_PROFIT_BB] = s.heroProfit.toLong()
                 if (s.heroProfit >= config.startingBB) d[Progress.CASH_DOUBLE_UPS] = 1
             }
             GameMode.TOURNAMENT -> {
                 d[Progress.TOURNEYS] = 1
-                d[Progress.TOURNEY_POINTS] = Math.round(s.heroProfit)
+                d[Progress.TOURNEY_POINTS] = s.heroProfit.roundToLong()
                 val paid = Icm.payoutsFor(config.tableSize).size
                 if (s.heroPlace in 1..paid) d[Progress.TOURNEY_ITM] = 1
                 if (s.heroPlace == 1) {

@@ -1,5 +1,7 @@
 package com.riverrunner.ui
 
+import com.riverrunner.presentation.betPresets
+import com.riverrunner.presentation.defaultBetTarget
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
@@ -517,38 +519,10 @@ private fun ThinkingDots() {
 
 // ------------------------------------------------------------------ betting controls
 
-private fun presets(st: Strings, la: LegalActions, bb: Int): List<Pair<String, Int>> {
-    val out = ArrayList<Pair<String, Int>>()
-    when {
-        la.isOpeningBet -> {
-            out += "1/3" to (la.pot / 3.0).roundToInt()
-            out += "1/2" to (la.pot / 2.0).roundToInt()
-            out += "3/4" to (la.pot * 0.75).roundToInt()
-            out += st.potShort to la.pot
-        }
-        la.currentBet <= bb -> {
-            // unopened or limped pot preflop
-            val limps = ((la.pot - la.currentBet * 2) / bb).coerceAtLeast(0)
-            out += "2.5x" to (bb * 2.5).roundToInt() + limps * bb
-            out += "3x" to bb * 3 + limps * bb
-            out += "4x" to bb * 4 + limps * bb
-        }
-        else -> {
-            out += "2.5x" to (la.currentBet * 2.5).roundToInt()
-            out += "3x" to la.currentBet * 3
-            out += st.potShort to la.currentBet + la.pot + la.toCall
-        }
-    }
-    val cleaned = out.map { it.first to it.second.coerceIn(la.minRaiseTo, la.maxRaiseTo) }
-        .filter { it.second < la.maxRaiseTo }
-        .distinctBy { it.second }
-    return cleaned + (st.allIn to la.maxRaiseTo)
-}
-
 @Composable
 private fun HeroControls(la: LegalActions, fmt: (Int) -> String, bb: Int, onMove: (Move) -> Unit) {
     val st = LocalStrings.current
-    var target by remember(la) { mutableIntStateOf(defaultTarget(la, bb)) }
+    var target by remember(la) { mutableIntStateOf(defaultBetTarget(la, bb)) }
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             val p = pulse()
@@ -558,7 +532,7 @@ private fun HeroControls(la: LegalActions, fmt: (Int) -> String, bb: Int, onMove
         }
         if (la.canRaise) {
             Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.fillMaxWidth()) {
-                for ((label, v) in presets(st, la, bb)) {
+                for ((label, v) in betPresets(st.potShort, st.allIn, la, bb)) {
                     val sel = v == target
                     Box(
                         Modifier.weight(1f).height(32.dp).pressable { target = v }.clip(RoundedCornerShape(6.dp))
@@ -614,14 +588,7 @@ private fun HeroControls(la: LegalActions, fmt: (Int) -> String, bb: Int, onMove
     }
 }
 
-private fun defaultTarget(la: LegalActions, bb: Int): Int {
-    val t = when {
-        la.isOpeningBet -> (la.pot * 0.5).roundToInt()
-        la.currentBet <= bb -> (bb * 2.5).roundToInt()
-        else -> la.currentBet * 3
-    }
-    return t.coerceIn(la.minRaiseTo, la.maxRaiseTo)
-}
+
 
 @Composable
 private fun StepButton(text: String, onClick: () -> Unit) {

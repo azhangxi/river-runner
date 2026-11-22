@@ -1,5 +1,7 @@
 package com.riverrunner.engine
 
+import kotlin.math.pow
+
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
@@ -111,7 +113,7 @@ object Bot {
             else -> 0.12
         }
         // widen as stacks get shorter, tighten as they get deeper
-        val factor = (10.0 / effBB.coerceAtLeast(1.0)).let { Math.pow(it, 0.85) }
+        val factor = (10.0 / effBB.coerceAtLeast(1.0)).pow(0.85)
         return (base10 * factor).coerceIn(0.0, 1.0)
     }
 
