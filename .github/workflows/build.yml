@@ -259,6 +259,9 @@ jobs:
           ls -la "$dist"
           mkdir -p /tmp/site && cp -r "$dist"/. /tmp/site/
           cd /tmp/site
+          # source maps are for debugging only (the two copies of skiko.wasm are both referenced)
+          rm -f ./*.map
+          ls -la
           touch .nojekyll
           echo "${GITHUB_SHA}" > COMMIT
           git init -q && git checkout -q -b gh-pages && git add -A
