@@ -9,6 +9,7 @@ const audio = join(dist, "audio");
 const sourceAudio = join(root, "app/src/main/res/raw");
 
 await copyFile(join(root, "CHANGELOG.md"), join(dist, "CHANGELOG.md"));
+await copyFile(join(root, "LICENSE"), join(dist, "LICENSE"));
 await mkdir(audio, { recursive: true });
 for (const file of await readdir(sourceAudio)) {
   if (file.endsWith(".wav")) await copyFile(join(sourceAudio, file), join(audio, file));
