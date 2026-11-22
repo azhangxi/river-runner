@@ -10,6 +10,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,10 +43,15 @@ private val TextDim = Color(0xFF9DAAA2)
 /**
  * First web build: checks that the page loads on the phone, Chinese text renders with the
  * bundled font, and the poker engine runs in the browser at a usable speed.
- * [platform] says which build the browser is running ("Wasm" or "JS").
+ * [platform] says which build the browser is running ("Wasm" or "JS"); [onFirstFrame] runs once
+ * the first frame is on screen.
  */
 @Composable
-fun App(platform: String) {
+fun App(platform: String, onFirstFrame: () -> Unit = {}) {
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        onFirstFrame()
+    }
     val cjk = FontFamily(Font(Res.font.noto_sans_sc))
     val base = TextStyle(fontFamily = cjk, color = TextColor, fontSize = 16.sp, textAlign = TextAlign.Center)
     var result by remember { mutableStateOf<String?>(null) }
