@@ -1,0 +1,78 @@
+# 更新日志 | Changelog
+
+每个版本一节，最新的在最上面。每条写成 `中文 | English`。
+CI 从最上面一节读取版本号（例如 `## 0.4` 会构建出 0.4.x），并把这一节贴进 GitHub 发布说明；
+App 内的“更新内容”也读取这个文件。
+
+One section per version, newest first. Each line is `Chinese | English`.
+CI takes the version from the top section (`## 0.4` builds 0.4.x) and copies that section into
+the GitHub release notes; the in-app "What's new" reads this file too.
+
+## 0.6 · 2026-11-20
+
+### 改进 | Changed
+- 界面用词改为练习软件的说法：开始练习、练习记录、再练一组、里程碑、练习档案；“筹码局 / 锦标赛”改为“固定盲注 / 涨盲·ICM”，固定盲注结束时显示“本组结束” | Practice wording throughout: start practice, practice log, session complete, milestones, practice profiles; cash and tournament modes are now fixed blinds and rising blinds (ICM)
+- 牌桌侧栏的开关、音效和新手指南收进 ⚙ 菜单，“复盘上一手”改成标题行的 ⟲ 图标，练习信息和行动记录不再被挤压 | The table switches, sound and guide move into a ⚙ menu and "last hand" becomes a ⟲ icon, so practice info and the action log keep their room
+
+### 修复 | Fixed
+- 涨盲模式下开启练习信息时，侧栏的底池、牌型和 SPR 被遮挡 | With rising blinds and practice info on, the pot, hand and SPR lines in the side panel were cut off
+
+## 0.5 · 2026-11-19
+
+### 新增 | Added
+- 牌桌阵容：混合桌可以选“随机、鱼塘、凶桌、紧桌”，或自定义每种风格各几个人，其余座位是 GTO | Table line-up: pick random, fish pond, aggressive or tight for a mixed table, or set how many bots play each style; the other seats play GTO
+- 数据 HUD：打开后每个机器人旁显示本局的入池率、加注率和手数，靠数据判断对手风格，不直接给标签 | HUD: shows each bot's VPIP, PFR and hand count this session, so you read their style from the numbers instead of a label
+- 偏离提示：打开后，你每做一个决定，侧栏会显示 GTO 的动作和尺寸分布，以及你是否偏离；提示在你行动之后才出现 | Live feedback: after each of your decisions the side panel shows the GTO action and size mix and whether you deviated; it only appears after you act
+- 复盘上一手：打牌时随时回看上一手，看完回到当前这手；误点跳过每手复盘也能补看 | Replay the last hand at any time during a session and return to the hand in play, also after skipping a review by mistake
+- 本局报告：结束后显示你的偏离率，按街和按位置分开统计，并揭晓每个机器人的真实风格 | Session report: your deviation rate overall, by street and by position, plus each bot's true style
+
+### 改进 | Changed
+- 牌桌侧栏的开关改为四个紧凑按钮：练习、每手复盘、数据、偏离提示 | The side panel switches are now four compact toggles: practice, review, HUD and feedback
+- 复盘和牌桌使用同一套偏离判定标准 | Replay and the table use the same rules to judge a deviation
+
+## 0.4 · 2026-11-11
+
+### 新增 | Added
+- 每手复盘：牌桌侧栏打开“每手复盘”，每手结束后直接进入这手的复盘，看完点“继续下一手” | Review each hand: turn on "Review each hand" at the table and every hand opens in replay when it ends; tap "Next hand" to continue
+- 打牌时收藏：牌桌右上角的 ☆ 可以收藏正在打的这一手，打完也能补收藏 | Star a hand while playing with the ☆ at the top of the table, or right after it ends
+- 复盘页的收藏按钮更显眼，标题显示第几手，方便在历史里找回来 | A clearer star button in replay, and the hand number in the title, so hands are easy to find in History
+- GTO 下注尺寸分五档：轻注、中注、重注、满池、超池；复盘里显示每档的频率，你的尺寸偏离时会提示 | GTO bet sizes in five classes (small, medium, large, pot, overbet); replay shows the mix and flags an unusual size
+- 更新内容：升级后首次打开会弹出本次更新，设置页也能查看全部记录 | What's new: shown once after an update, and the full list is in Settings
+
+### 改进 | Changed
+- 机器人开池、下注和加注的尺寸会混合使用，大小不再直接暴露牌力 | Bots mix their open, bet and raise sizes, so the size no longer gives away the hand
+
+### 修复 | Fixed
+- 修正单挑时机器人几乎不做价值下注、只会诈唬的问题 | Heads-up bots almost never bet for value, only as bluffs
+
+## 0.3 · 2026-11-09
+
+### 改进 | Changed
+- 更换了 APK 签名密钥；从 0.2.x 升级需要先卸载旧版本再安装 | New APK signing key; uninstall a 0.2.x build before installing
+- 项目主页加入截图、下载入口和安装说明 | Project page with screenshots, a download link and install notes
+
+## 0.2 · 2026-10-30
+
+### 新增 | Added
+- 牌面配色设置：四色、四色底、红黑；梅花和黑桃改为矢量图形，小牌上也能分清 | Card colour setting (four-colour, filled, red and black); vector suit shapes so clubs and spades are easy to tell apart
+- 6 个存档，每个存档有自己的生涯统计、手牌历史和成就 | Six save slots, each with its own career stats, hand history and achievements
+- 35 个成就，分 7 类，包括“趣味”成就（比如拿 AA 输了） | 35 achievements in seven categories, including just-for-fun ones (such as losing with aces)
+- 音效和静音开关，盲注上涨时有提示 | Sound effects with a mute button, and a notice when the blinds go up
+- 新首页和单独的开局设置页，可以按上次设置快速开始 | New home screen and a separate game setup screen, with quick start using the last settings
+
+### 改进 | Changed
+- 绿色牌桌配金色的视觉风格，按钮文字对比度更高 | Green felt and brass look, with higher contrast on buttons
+- 下注筹码不再互相遮挡，底池显示在公共牌下方 | Bet chips no longer overlap, and the pot sits below the board
+- 练习模式面板更紧凑，不再挡住行动记录 | A more compact practice panel that no longer hides the action log
+- 新手指南里的英文术语加上了全称 | Full names for the English terms in the guide
+
+## 0.1 · 2026-10-26
+
+### 新增 | Added
+- 单机德州扑克练习：2、5、6、7、8 人桌，现金局和单桌锦标赛（ICM、按手数涨盲） | Offline Hold'em practice: 2, 5, 6, 7 and 8-player tables, cash games and single-table tournaments (ICM, blinds up by hands)
+- 近似 GTO 的机器人，以及混合风格牌桌 | Approximate-GTO bots and mixed-style tables
+- 练习模式：显示底池赔率、所需胜率、SPR 和当前牌型，不显示胜率 | Practice mode: pot odds, equity needed, SPR and your made hand, never your equity
+- 复盘：显示所有底牌、每条街的胜率，以及你每个决策的 GTO 建议 | Replay with every hole card, equity on each street and a GTO suggestion for each of your decisions
+- 保留最近 1000 手牌历史，可收藏；统计 VPIP、PFR、3-bet 等数据 | The last 1000 hands kept in History, with stars; stats such as VPIP, PFR and 3-bet
+- 新手指南：规则、牌型大小、位置和术语 | Beginner guide: rules, hand rankings, positions and terms
+- 牌桌动画、手动进入下一手、行动记录；中英文切换 | Table animations, manual next hand, action log; Chinese and English
