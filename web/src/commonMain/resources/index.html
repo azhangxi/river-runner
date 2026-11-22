@@ -66,12 +66,28 @@
                 __rrLog("控制台错误: " + Array.prototype.map.call(arguments, String).join(" ").slice(0, 200), true);
                 return origError.apply(console, arguments);
             };
+            // report WebAssembly compiles: a large module can take very long in some in-app browsers
+            if (typeof WebAssembly === "object") {
+                ["instantiateStreaming", "compileStreaming", "instantiate", "compile"].forEach(function (fn) {
+                    var orig = WebAssembly[fn];
+                    if (!orig) return;
+                    WebAssembly[fn] = function () {
+                        var started = Date.now(), n = ++window.__rrWasmCount;
+                        __rrLog("编译 Wasm #" + n + "（" + fn + "）开始");
+                        return orig.apply(WebAssembly, arguments).then(function (r) {
+                            __rrLog("编译 Wasm #" + n + " 完成（" + ((Date.now() - started) / 1000).toFixed(1) + " 秒）");
+                            return r;
+                        }, function (err) { __rrLog("编译 Wasm #" + n + " 失败: " + err, true); throw err; });
+                    };
+                });
+                window.__rrWasmCount = 0;
+            }
             // the app calls this after its first frame
             window.__rrReady = function () {
                 __rrLog("第一帧已绘制");
                 var l = el("loading"); if (l) l.remove();
             };
-            var ua = navigator.userAgent.match(/(iPhone OS [\d_]+|Android [\d.]+|Version\/[\d.]+|Chrome\/\d+)/g);
+            var ua = navigator.userAgent.match(/(iPhone OS [\d_]+|Android [\d.]+|Version\/[\d.]+|Chrome\/\d+|MicroMessenger\/[\d.]+|discover\/[\d.]+|Safari\/[\d.]+)/g);
             __rrLog((ua || []).join(" ") + (navigator.deviceMemory ? "，内存 " + navigator.deviceMemory + " GB" : ""));
             __rrLog("WebAssembly: " + (typeof WebAssembly === "object" ? "支持" : "不支持"));
         })();
